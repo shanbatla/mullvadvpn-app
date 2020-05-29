@@ -3,6 +3,8 @@ use mullvad_types::{
     relay_constraints::{BridgeSettings, BridgeState, RelaySettingsUpdate},
     settings::{DnsOptions, Settings},
 };
+#[cfg(target_os = "windows")]
+use std::collections::HashSet;
 use std::{
     fs::{self, File},
     io,
@@ -245,6 +247,21 @@ impl SettingsPersister {
 
     pub fn set_bridge_state(&mut self, bridge_state: BridgeState) -> Result<bool, Error> {
         let should_save = self.settings.set_bridge_state(bridge_state);
+        self.update(should_save)
+    }
+
+    #[cfg(windows)]
+    pub fn set_split_tunnel_apps(&mut self, paths: HashSet<String>) -> Result<bool, Error> {
+        let should_save = paths != self.settings.split_tunnel_apps;
+        if should_save {
+            self.settings.split_tunnel_apps = paths;
+        }
+        self.update(should_save)
+    }
+
+    #[cfg(windows)]
+    pub fn set_split_tunnel_state(&mut self, enabled: bool) -> Result<bool, Error> {
+        let should_save = Self::update_field(&mut self.settings.split_tunnel, enabled);
         self.update(should_save)
     }
 

@@ -43,6 +43,8 @@ use mullvad_types::{
 use settings::SettingsPersister;
 #[cfg(not(target_os = "android"))]
 use std::path::Path;
+#[cfg(target_os = "windows")]
+use std::{collections::HashSet, ffi::OsString};
 use std::{
     fs::{self, File},
     io,
@@ -226,6 +228,18 @@ pub enum DaemonCommand {
     /// Clear list of processes excluded from the tunnel
     #[cfg(target_os = "linux")]
     ClearSplitTunnelProcesses(oneshot::Sender<()>),
+    /// Request list of apps to exclude from the tunnel
+    #[cfg(windows)]
+    GetSplitTunnelApps(oneshot::Sender<HashSet<String>>),
+    /// Exclude traffic of an application from the tunnel
+    #[cfg(windows)]
+    AddSplitTunnelApp(oneshot::Sender<()>, String),
+    /// Remove application from list of apps to exclude from the tunnel
+    #[cfg(windows)]
+    RemoveSplitTunnelApp(oneshot::Sender<()>, String),
+    /// Disable split tunnel
+    #[cfg(windows)]
+    SetSplitTunnelState(oneshot::Sender<()>, bool),
     /// Makes the daemon exit the main loop and quit.
     Shutdown,
     /// Saves the target tunnel state and enters a blocking state. The state is restored
@@ -576,6 +590,17 @@ where
             TargetState::Unsecured
         };
 
+        #[cfg(windows)]
+        let exclude_apps = if settings.split_tunnel {
+            settings
+                .split_tunnel_apps
+                .iter()
+                .map(|s| OsString::from(s))
+                .collect()
+        } else {
+            vec![]
+        };
+
         let tunnel_command_tx = tunnel_state_machine::spawn(
             settings.allow_lan,
             settings.block_when_disconnected,
@@ -589,6 +614,8 @@ where
             initial_target_state != TargetState::Secured,
             #[cfg(target_os = "android")]
             android_context,
+            #[cfg(windows)]
+            exclude_apps,
         )
         .await
         .map_err(Error::TunnelError)?;
@@ -1072,6 +1099,14 @@ where
             RemoveSplitTunnelProcess(tx, pid) => self.on_remove_split_tunnel_process(tx, pid),
             #[cfg(target_os = "linux")]
             ClearSplitTunnelProcesses(tx) => self.on_clear_split_tunnel_processes(tx),
+            #[cfg(windows)]
+            GetSplitTunnelApps(tx) => self.on_get_split_tunnel_apps(tx),
+            #[cfg(windows)]
+            AddSplitTunnelApp(tx, path) => self.on_add_split_tunnel_app(tx, path).await,
+            #[cfg(windows)]
+            RemoveSplitTunnelApp(tx, path) => self.on_remove_split_tunnel_app(tx, path).await,
+            #[cfg(windows)]
+            SetSplitTunnelState(tx, enabled) => self.on_set_split_tunnel_state(tx, enabled).await,
             Shutdown => self.trigger_shutdown_event(),
             PrepareRestart => self.on_prepare_restart(),
         }
@@ -1515,6 +1550,132 @@ where
         match self.exclude_pids.clear() {
             Ok(()) => Self::oneshot_send(tx, (), "clear_split_tunnel_processes response"),
             Err(e) => error!("{}", e.display_chain_with_msg("Unable to clear PIDs")),
+        }
+    }
+
+    #[cfg(windows)]
+    fn on_get_split_tunnel_apps(&mut self, tx: oneshot::Sender<HashSet<String>>) {
+        Self::oneshot_send(
+            tx,
+            self.settings.to_settings().split_tunnel_apps,
+            "get_split_tunnel_apps response",
+        );
+    }
+
+    /// Update the split app paths in both the settings and tunnel
+    #[cfg(windows)]
+    async fn set_split_tunnel_paths(
+        &mut self,
+        tx: oneshot::Sender<()>,
+        success_msg: &'static str,
+        settings: Settings,
+        new_list: HashSet<String>,
+    ) {
+        if new_list == settings.split_tunnel_apps {
+            Self::oneshot_send(tx, (), success_msg);
+            return;
+        }
+
+        if settings.split_tunnel {
+            let (result_tx, result_rx) = oneshot::channel();
+            self.send_tunnel_command(TunnelCommand::SetExcludedApps(
+                result_tx,
+                new_list.iter().map(|s| OsString::from(s)).collect(),
+            ));
+            match result_rx.await {
+                Ok(Ok(_)) => (),
+                Ok(Err(error)) => {
+                    log::error!(
+                        "{}",
+                        error.display_chain_with_msg("Failed to set excluded apps list")
+                    );
+                    return;
+                }
+                Err(_) => {
+                    log::error!("The tunnel failed to return a result");
+                    return;
+                }
+            }
+        }
+
+        let save_result = self.settings.set_split_tunnel_apps(new_list);
+        match save_result {
+            Ok(true) => {
+                Self::oneshot_send(tx, (), success_msg);
+                self.event_listener
+                    .notify_settings(self.settings.to_settings());
+            }
+            Err(e) => error!("{}", e.display_chain_with_msg("Unable to save settings")),
+            Ok(false) => unreachable!("new_list != settings.split_tunnel_apps"),
+        }
+    }
+
+    #[cfg(windows)]
+    async fn on_add_split_tunnel_app(&mut self, tx: oneshot::Sender<()>, path: String) {
+        let settings = self.settings.to_settings();
+
+        let mut new_list = settings.split_tunnel_apps.clone();
+        new_list.insert(path);
+
+        self.set_split_tunnel_paths(tx, "add_split_tunnel_app response", settings, new_list)
+            .await;
+    }
+
+    #[cfg(windows)]
+    async fn on_remove_split_tunnel_app(&mut self, tx: oneshot::Sender<()>, path: String) {
+        let settings = self.settings.to_settings();
+
+        let mut new_list = settings.split_tunnel_apps.clone();
+        new_list.remove(&path);
+
+        self.set_split_tunnel_paths(tx, "remove_split_tunnel_app response", settings, new_list)
+            .await;
+    }
+
+    #[cfg(windows)]
+    async fn on_set_split_tunnel_state(&mut self, tx: oneshot::Sender<()>, enabled: bool) {
+        let settings = self.settings.to_settings();
+
+        if enabled != settings.split_tunnel {
+            let new_list = if enabled {
+                settings.split_tunnel_apps.clone()
+            } else {
+                HashSet::new()
+            };
+            if !settings.split_tunnel_apps.is_empty() {
+                let (result_tx, result_rx) = oneshot::channel();
+                self.send_tunnel_command(TunnelCommand::SetExcludedApps(
+                    result_tx,
+                    new_list.iter().map(|app| OsString::from(app)).collect(),
+                ));
+                match result_rx.await {
+                    Ok(Ok(_)) => (),
+                    Ok(Err(error)) => {
+                        log::error!(
+                            "{}",
+                            error.display_chain_with_msg("Failed to set excluded apps list")
+                        );
+                        return;
+                    }
+                    Err(_) => {
+                        log::error!("The tunnel failed to return a result");
+                        return;
+                    }
+                }
+            }
+
+            let save_result = self.settings.set_split_tunnel_state(enabled);
+            match save_result {
+                Ok(true) => {
+                    Self::oneshot_send(tx, (), "set_split_tunnel_state response");
+                    self.event_listener
+                        .notify_settings(self.settings.to_settings());
+                }
+                Err(e) => error!("{}", e.display_chain_with_msg("Unable to save settings")),
+                Ok(false) => unreachable!("enabled != settings.split_tunnel"),
+            }
+        } else {
+            Self::oneshot_send(tx, (), "set_split_tunnel_state response");
         }
     }
 

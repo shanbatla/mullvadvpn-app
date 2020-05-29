@@ -57,6 +57,7 @@ impl ManagementService for ManagementServiceImpl {
     type GetRelayLocationsStream =
         tokio::sync::mpsc::Receiver<Result<types::RelayListCountry, Status>>;
     type GetSplitTunnelProcessesStream = tokio::sync::mpsc::UnboundedReceiver<Result<i32, Status>>;
+    type GetSplitTunnelAppsStream = tokio::sync::mpsc::UnboundedReceiver<Result<String, Status>>;
     type EventsListenStream = EventsListenerReceiver;
 
     // Control and get the tunnel state
@@ -717,6 +718,78 @@ impl ManagementService for ManagementServiceImpl {
             Ok(Response::new(()))
         }
     }
+
+    async fn get_split_tunnel_apps(
+        &self,
+        _: Request<()>,
+    ) -> ServiceResult<Self::GetSplitTunnelAppsStream> {
+        #[cfg(windows)]
+        {
+            log::debug!("get_split_tunnel_apps");
+            let (tx, rx) = oneshot::channel();
+            self.send_command_to_daemon(DaemonCommand::GetSplitTunnelApps(tx))?;
+            let paths = rx.await.map_err(|_| Status::internal("internal error"))?;
+
+            let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+            tokio::spawn(async move {
+                for path in paths {
+                    let _ = tx.send(Ok(path));
+                }
+            });
+
+            Ok(Response::new(rx))
+        }
+        #[cfg(not(windows))]
+        {
+            let (_, rx) = tokio::sync::mpsc::unbounded_channel();
+            Ok(Response::new(rx))
+        }
+    }
+
+    #[cfg(windows)]
+    async fn add_split_tunnel_app(&self, request: Request<String>) -> ServiceResult<()> {
+        log::debug!("add_split_tunnel_app");
+        let path = request.into_inner();
+        let (tx, rx) = oneshot::channel();
+        self.send_command_to_daemon(DaemonCommand::AddSplitTunnelApp(tx, path))?;
+        rx.await
+            .map_err(|_| Status::internal("internal error"))
+            .map(Response::new)
+    }
+    #[cfg(not(windows))]
+    async fn add_split_tunnel_app(&self, _: Request<String>) -> ServiceResult<()> {
+        Ok(Response::new(()))
+    }
+
+    #[cfg(windows)]
+    async fn remove_split_tunnel_app(&self, request: Request<String>) -> ServiceResult<()> {
+        log::debug!("remove_split_tunnel_app");
+        let path = request.into_inner();
+        let (tx, rx) = oneshot::channel();
+        self.send_command_to_daemon(DaemonCommand::RemoveSplitTunnelApp(tx, path))?;
+        rx.await
+            .map_err(|_| Status::internal("internal error"))
+            .map(Response::new)
+    }
+    #[cfg(not(windows))]
+    async fn remove_split_tunnel_app(&self, _: Request<String>) -> ServiceResult<()> {
+        Ok(Response::new(()))
+    }
+
+    #[cfg(windows)]
+    async fn set_split_tunnel_state(&self, request: Request<bool>) -> ServiceResult<()> {
+        log::debug!("set_split_tunnel_state");
+        let enabled = request.into_inner();
+        let (tx, rx) = oneshot::channel();
+        self.send_command_to_daemon(DaemonCommand::SetSplitTunnelState(tx, enabled))?;
+        rx.await
+            .map_err(|_| Status::internal("internal error"))
+            .map(Response::new)
+    }
+    #[cfg(not(windows))]
+    async fn set_split_tunnel_state(&self, _: Request<bool>) -> ServiceResult<()> {
+        Ok(Response::new(()))
+    }
 }
 
 impl ManagementServiceImpl {
@@ -739,6 +812,14 @@ fn convert_settings(settings: &Settings) -> types::Settings {
         auto_connect: settings.auto_connect,
         tunnel_options: Some(convert_tunnel_options(&settings.tunnel_options)),
         show_beta_releases: settings.show_beta_releases,
+        #[cfg(windows)]
+        split_tunnel: settings.split_tunnel,
+        #[cfg(windows)]
+        split_tunnel_apps: settings.split_tunnel_apps.clone().into_iter().collect(),
+        #[cfg(not(windows))]
+        split_tunnel: false,
+        #[cfg(not(windows))]
+        split_tunnel_apps: Vec::new(),
     }
 }
 

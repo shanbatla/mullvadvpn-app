@@ -260,6 +260,8 @@ impl OpenVpnMonitor<OpenVpnCommand> {
     where
         L: Fn(TunnelEvent) + Send + Sync + 'static,
     {
+        log::info!("OPENVPN TUNNEL PARAMETERS: {:?}", params);
+
         let user_pass_file =
             Self::create_credentials_file(&params.config.username, &params.config.password)
                 .map_err(Error::CredentialsWriteError)?;

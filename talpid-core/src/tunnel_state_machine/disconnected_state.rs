@@ -3,7 +3,11 @@ use super::{
     TunnelCommandReceiver, TunnelState, TunnelStateTransition, TunnelStateWrapper,
 };
 use crate::firewall::FirewallPolicy;
+#[cfg(windows)]
+use crate::split_tunnel;
 use futures::StreamExt;
+#[cfg(windows)]
+use std::ffi::OsStr;
 use talpid_types::ErrorExt;
 
 /// No tunnel is running.
@@ -34,6 +38,18 @@ impl DisconnectedState {
         if let Err(error_chain) = result {
             log::error!("{}", error_chain);
         }
+    }
+
+    #[cfg(windows)]
+    fn apply_split_tunnel_config<T: AsRef<OsStr>>(
+        shared_values: &SharedTunnelStateValues,
+        paths: &[T],
+    ) -> Result<(), split_tunnel::Error> {
+        let split_tunnel = shared_values
+            .split_tunnel
+            .lock()
+            .expect("Thread unexpectedly panicked while holding the mutex");
+        split_tunnel.set_paths(paths)
     }
 }
 
@@ -99,6 +115,11 @@ impl TunnelState for DisconnectedState {
             Some(TunnelCommand::Connect) => NewState(ConnectingState::enter(shared_values, 0)),
             Some(TunnelCommand::Block(reason)) => {
                 NewState(ErrorState::enter(shared_values, reason))
+            }
+            #[cfg(windows)]
+            Some(TunnelCommand::SetExcludedApps(result_tx, paths)) => {
+                let _ = result_tx.send(Self::apply_split_tunnel_config(shared_values, &paths));
+                SameState(self.into())
             }
             Some(_) => SameState(self.into()),
             None => Finished,
