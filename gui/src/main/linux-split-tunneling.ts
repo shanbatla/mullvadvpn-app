@@ -4,7 +4,7 @@ import log from 'electron-log';
 import fs from 'fs';
 import linuxAppList, { AppData } from 'linux-app-list';
 import path from 'path';
-import ISplitTunnelingApplication from '../shared/linux-split-tunneling-application';
+import { ILinuxSplitTunnelingApplication } from '../shared/split-tunneling-application';
 import { pascalCaseToCamelCase } from './transform-object-keys';
 
 const PROBLEMATIC_APPLICATIONS = {
@@ -23,7 +23,7 @@ const PROBLEMATIC_APPLICATIONS = {
 
 type DirectoryDescription = string | RegExp;
 
-interface IApplication extends ISplitTunnelingApplication {
+interface IApplication extends ILinuxSplitTunnelingApplication {
   type: string;
   terminal?: string;
   noDisplay?: string;
@@ -33,7 +33,7 @@ interface IApplication extends ISplitTunnelingApplication {
   tryExec?: string;
 }
 
-export function launchApplication(app: ISplitTunnelingApplication | string) {
+export function launchApplication(app: ILinuxSplitTunnelingApplication | string) {
   const excludeArguments = typeof app === 'string' ? [app] : formatExec(app.exec);
   child_process.spawn('mullvad-exclude', excludeArguments, { detached: true });
 }
@@ -44,13 +44,16 @@ function formatExec(exec: string) {
 }
 
 // TODO: Switch to asyncronous reading of .desktop files
-export function getApplications(locale: string): Promise<ISplitTunnelingApplication[]> {
+export function getApplications(locale: string): Promise<ILinuxSplitTunnelingApplication[]> {
   const appList = linuxAppList();
   const applications = appList
     .list()
     .map((filename) => {
-      const applications = localizeNameAndIcon(appList.data(filename), locale);
-      return pascalCaseToCamelCase<IApplication>(applications);
+      const application = localizeNameAndIcon(appList.data(filename), locale);
+      return pascalCaseToCamelCase<IApplication>({
+        ...application,
+        path: application.absolutepath,
+      });
     })
     .filter(shouldShowApplication)
     .map(addApplicationWarnings)

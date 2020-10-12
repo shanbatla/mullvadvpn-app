@@ -1071,11 +1071,11 @@ class ApplicationMain {
     });
     IpcMainEventChannel.wireguardKeys.handleVerifyKey(() => this.daemonRpc.verifyWireguardKey());
 
-    IpcMainEventChannel.splitTunneling.handleGetApplications(() => {
+    IpcMainEventChannel.splitTunneling.handleGetLinuxApplications(() => {
       if (linuxSplitTunneling) {
         return linuxSplitTunneling.getApplications(this.locale);
       } else {
-        throw Error('linuxSplitTunneling called without being imported');
+        throw Error('linuxSplitTunneling.getApplications function called without being imported');
       }
     });
     IpcMainEventChannel.splitTunneling.handleLaunchApplication((application) => {
@@ -1083,7 +1083,7 @@ class ApplicationMain {
         linuxSplitTunneling.launchApplication(application);
         return Promise.resolve();
       } else {
-        throw Error('linuxSplitTunneling called without being imported');
+        throw Error('linuxSplitTunneling.launchApplication function called without being imported');
       }
     });
 
