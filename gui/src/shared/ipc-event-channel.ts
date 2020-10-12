@@ -6,7 +6,10 @@ import { IGuiSettingsState } from './gui-settings-state';
 
 import { ICurrentAppVersionInfo } from '../main/index';
 import { IWindowShapeParameters } from '../main/window-controller';
-import ISplitTunnelingApplication from '../shared/linux-split-tunneling-application';
+import {
+  ILinuxSplitTunnelingApplication,
+  ISplitTunnelingApplication,
+} from '../shared/split-tunneling-application';
 import {
   AccountToken,
   BridgeSettings,
@@ -158,13 +161,31 @@ interface IWireguardKeyHandlers extends ISender<IWireguardPublicKey | undefined>
 }
 
 interface ISplitTunnelingMethods {
-  getApplications(): Promise<ISplitTunnelingApplication[]>;
-  launchApplication(application: ISplitTunnelingApplication | string): Promise<void>;
+  // Linux
+  getLinuxApplications(): Promise<ILinuxSplitTunnelingApplication[]>;
+  launchApplication(application: ILinuxSplitTunnelingApplication | string): Promise<void>;
+
+  // Windows
+  setState(enabled: boolean): Promise<void>;
+  getWindowsApplications(): Promise<ISplitTunnelingApplication[]>;
+  addApplication(application: ISplitTunnelingApplication | string): Promise<void>;
+  removeApplication(application: ISplitTunnelingApplication | string): Promise<void>;
 }
 
 interface ISplitTunnelingHandlers {
-  handleGetApplications(fn: () => Promise<ISplitTunnelingApplication[]>): void;
+  // Linux
+  handleGetLinuxApplications(fn: () => Promise<ILinuxSplitTunnelingApplication[]>): void;
   handleLaunchApplication(
+    fn: (application: ILinuxSplitTunnelingApplication | string) => Promise<void>,
+  ): void;
+
+  // Windows
+  handleSetState(fn: (enabled: boolean) => Promise<void>): void;
+  handleGetWindowsApplications(fn: () => Promise<ILinuxSplitTunnelingApplication[]>): void;
+  handleAddApplication(
+    fn: (application: ISplitTunnelingApplication | string) => Promise<void>,
+  ): void;
+  handleRemoveApplication(
     fn: (application: ISplitTunnelingApplication | string) => Promise<void>,
   ): void;
 }
@@ -228,8 +249,14 @@ const WIREGUARD_KEYGEN_EVENT = 'wireguard-keygen-event';
 const GENERATE_WIREGUARD_KEY = 'generate-wireguard-key';
 const VERIFY_WIREGUARD_KEY = 'verify-wireguard-key';
 
-const SPLIT_TUNNELING_GET_APPLICATIONS = 'split-tunneling-get-applications';
+// Linux
+const SPLIT_TUNNELING_GET_LINUX_APPLICATIONS = 'split-tunneling-get-linux-applications';
 const SPLIT_TUNNELING_LAUNCH_APPLICATION = 'split-tunneling-launch-application';
+// Windows
+const SPLIT_TUNNELING_SET_STATE = 'split-tunneling-set-state';
+const SPLIT_TUNNELING_GET_WINDOWS_APPLICATIONS = 'split-tunneling-get-windows-applications';
+const SPLIT_TUNNELING_ADD_APPLICATION = 'split-tunneling-add-application';
+const SPLIT_TUNNELING_REMOVE_APPLICATION = 'split-tunneling-remove-application';
 
 /// Typed IPC event channel
 ///
@@ -338,8 +365,15 @@ export class IpcRendererEventChannel {
   };
 
   public static splitTunneling: ISplitTunnelingMethods = {
-    getApplications: requestSender(SPLIT_TUNNELING_GET_APPLICATIONS),
+    // Linux
+    getLinuxApplications: requestSender(SPLIT_TUNNELING_GET_LINUX_APPLICATIONS),
     launchApplication: requestSender(SPLIT_TUNNELING_LAUNCH_APPLICATION),
+
+    // Windows
+    setState: requestSender(SPLIT_TUNNELING_SET_STATE),
+    getWindowsApplications: requestSender(SPLIT_TUNNELING_GET_WINDOWS_APPLICATIONS),
+    addApplication: requestSender(SPLIT_TUNNELING_ADD_APPLICATION),
+    removeApplication: requestSender(SPLIT_TUNNELING_REMOVE_APPLICATION),
   };
 }
 
@@ -446,8 +480,15 @@ export class IpcMainEventChannel {
   };
 
   public static splitTunneling: ISplitTunnelingHandlers = {
-    handleGetApplications: requestHandler(SPLIT_TUNNELING_GET_APPLICATIONS),
+    // Linux
+    handleGetLinuxApplications: requestHandler(SPLIT_TUNNELING_GET_LINUX_APPLICATIONS),
     handleLaunchApplication: requestHandler(SPLIT_TUNNELING_LAUNCH_APPLICATION),
+
+    // Windows
+    handleSetState: requestHandler(SPLIT_TUNNELING_SET_STATE),
+    handleGetWindowsApplications: requestHandler(SPLIT_TUNNELING_GET_WINDOWS_APPLICATIONS),
+    handleAddApplication: requestHandler(SPLIT_TUNNELING_ADD_APPLICATION),
+    handleRemoveApplication: requestHandler(SPLIT_TUNNELING_REMOVE_APPLICATION),
   };
 }
 

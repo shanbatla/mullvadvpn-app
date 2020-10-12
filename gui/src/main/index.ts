@@ -68,8 +68,9 @@ import ReconnectionBackoff from './reconnection-backoff';
 import TrayIconController, { TrayIconType } from './tray-icon-controller';
 import WindowController from './window-controller';
 
-// Only import when running app on Linux.
+// Only import split tunneling library on correct OS.
 const linuxSplitTunneling = process.platform === 'linux' && require('./linux-split-tunneling');
+const windowsSplitTunneling = process.platform === 'win32' && require('./windows-split-tunneling');
 
 const DAEMON_RPC_PATH =
   process.platform === 'win32' ? 'unix:////./pipe/Mullvad VPN' : 'unix:///var/run/mullvad-vpn';
@@ -120,6 +121,7 @@ class ApplicationMain {
     autoConnect: false,
     blockWhenDisconnected: false,
     showBetaReleases: false,
+    enableExclusions: false,
     relaySettings: {
       normal: {
         location: 'any',
@@ -1078,12 +1080,49 @@ class ApplicationMain {
         throw Error('linuxSplitTunneling.getApplications function called without being imported');
       }
     });
+    IpcMainEventChannel.splitTunneling.handleGetWindowsApplications(() => {
+      if (windowsSplitTunneling) {
+        return windowsSplitTunneling.getApplications();
+      } else {
+        throw Error('windowsSplitTunneling.getApplications function called without being imported');
+      }
+    });
     IpcMainEventChannel.splitTunneling.handleLaunchApplication((application) => {
       if (linuxSplitTunneling) {
         linuxSplitTunneling.launchApplication(application);
         return Promise.resolve();
       } else {
         throw Error('linuxSplitTunneling.launchApplication function called without being imported');
+      }
+    });
+
+    IpcMainEventChannel.splitTunneling.handleSetState((enabled) => {
+      if (windowsSplitTunneling) {
+        return this.daemonRpc.setSplitTunnelingState(enabled);
+      } else {
+        throw Error('windowsSplitTunneling.setState function called without being imported');
+      }
+    });
+    IpcMainEventChannel.splitTunneling.handleAddApplication((application) => {
+      if (windowsSplitTunneling) {
+        return this.daemonRpc.addSplitTunnelingApplication(
+          typeof application === 'string' ? application : application.path,
+        );
+      } else {
+        throw Error(
+          'windowsSplitTunneling.handleAddApplication function called without being imported',
+        );
+      }
+    });
+    IpcMainEventChannel.splitTunneling.handleRemoveApplication((application) => {
+      if (windowsSplitTunneling) {
+        return this.daemonRpc.removeSplitTunnelingApplication(
+          typeof application === 'string' ? application : application.path,
+        );
+      } else {
+        throw Error(
+          'windowsSplitTunneling.handleRemoveApplication function called without being imported',
+        );
       }
     });
 

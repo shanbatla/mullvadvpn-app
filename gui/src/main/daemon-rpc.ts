@@ -471,6 +471,18 @@ export class DaemonRpc {
     return response.toObject();
   }
 
+  public async addSplitTunnelingApplication(_path: string): Promise<void> {
+    // TODO
+  }
+
+  public async removeSplitTunnelingApplication(_path: string): Promise<void> {
+    // TODO
+  }
+
+  public async setSplitTunnelingState(_enabled: boolean): Promise<void> {
+    // TODO
+  }
+
   private subscriptionId(): number {
     const current = this.nextSubscriptionId;
     this.nextSubscriptionId += 1;

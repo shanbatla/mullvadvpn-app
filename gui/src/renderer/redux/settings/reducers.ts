@@ -138,6 +138,7 @@ export interface ISettingsReduxState {
     addresses: string[];
   };
   wireguardKeyState: WgKeyState;
+  enableExclusions: boolean;
 }
 
 const initialState: ISettingsReduxState = {
@@ -182,6 +183,7 @@ const initialState: ISettingsReduxState = {
     custom: false,
     addresses: [],
   },
+  enableExclusions: false,
 };
 
 export default function (
@@ -313,6 +315,12 @@ export default function (
       return {
         ...state,
         dns: action.dns,
+      };
+
+    case 'SPLIT_TUNNELING_ENABLE_EXCLUSIONS':
+      return {
+        ...state,
+        enableExclusions: action.enabled,
       };
 
     default:

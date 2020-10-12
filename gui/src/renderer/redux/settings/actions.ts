@@ -107,6 +107,11 @@ export interface IUpdateDnsOptionsAction {
   dns: IDnsOptions;
 }
 
+export interface ISplitTunnelingEnableExclusions {
+  type: 'SPLIT_TUNNELING_ENABLE_EXCLUSIONS';
+  enabled: boolean;
+}
+
 export type SettingsAction =
   | IUpdateGuiSettingsAction
   | IUpdateRelayAction
@@ -127,7 +132,8 @@ export type SettingsAction =
   | IWireguardReplaceKey
   | IWireguardKeygenEvent
   | IWireguardKeyVerifiedAction
-  | IUpdateDnsOptionsAction;
+  | IUpdateDnsOptionsAction
+  | ISplitTunnelingEnableExclusions;
 
 function updateGuiSettings(guiSettings: IGuiSettingsState): IUpdateGuiSettingsAction {
   return {
@@ -279,6 +285,13 @@ function updateDnsOptions(dns: IDnsOptions): IUpdateDnsOptionsAction {
   };
 }
 
+function updateSplitTunneling(enabled: boolean): ISplitTunnelingEnableExclusions {
+  return {
+    type: 'SPLIT_TUNNELING_ENABLE_EXCLUSIONS',
+    enabled,
+  };
+}
+
 export default {
   updateGuiSettings,
   updateRelay,
@@ -300,4 +313,5 @@ export default {
   verifyWireguardKey,
   completeWireguardKeyVerification,
   updateDnsOptions,
+  updateSplitTunneling,
 };

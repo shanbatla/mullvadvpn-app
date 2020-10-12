@@ -21,7 +21,10 @@ import { ICurrentAppVersionInfo } from '../main';
 import { loadTranslations, messages, relayLocations } from '../shared/gettext';
 import { IGuiSettingsState, SYSTEM_PREFERRED_LOCALE_KEY } from '../shared/gui-settings-state';
 import { IpcRendererEventChannel, IRelayListPair } from '../shared/ipc-event-channel';
-import ISplitTunnelingApplication from '../shared/linux-split-tunneling-application';
+import {
+  ISplitTunnelingApplication,
+  ILinuxSplitTunnelingApplication,
+} from '../shared/split-tunneling-application';
 import { getRendererLogFile, setupLogging } from '../shared/logging';
 import consumePromise from '../shared/promise';
 import History from './lib/history';
@@ -416,12 +419,28 @@ export default class AppRenderer {
     actions.settings.setWireguardKeygenEvent(keygenEvent);
   }
 
-  public getSplitTunnelingApplications() {
-    return IpcRendererEventChannel.splitTunneling.getApplications();
+  public getLinuxSplitTunnelingApplications() {
+    return IpcRendererEventChannel.splitTunneling.getLinuxApplications();
   }
 
-  public launchExcludedApplication(application: ISplitTunnelingApplication | string) {
+  public getWindowsSplitTunnelingApplications() {
+    return IpcRendererEventChannel.splitTunneling.getWindowsApplications();
+  }
+
+  public launchExcludedApplication(application: ILinuxSplitTunnelingApplication | string) {
     consumePromise(IpcRendererEventChannel.splitTunneling.launchApplication(application));
+  }
+
+  public setSplitTunnelingState(enabled: boolean) {
+    consumePromise(IpcRendererEventChannel.splitTunneling.setState(enabled));
+  }
+
+  public addSplitTunnelingApplication(application: ISplitTunnelingApplication | string) {
+    consumePromise(IpcRendererEventChannel.splitTunneling.addApplication(application));
+  }
+
+  public removeSplitTunnelingApplication(application: ISplitTunnelingApplication | string) {
+    consumePromise(IpcRendererEventChannel.splitTunneling.removeApplication(application));
   }
 
   public getPreferredLocaleList(): IPreferredLocaleDescriptor[] {
@@ -621,6 +640,7 @@ export default class AppRenderer {
     reduxSettings.updateWireguardMtu(newSettings.tunnelOptions.wireguard.mtu);
     reduxSettings.updateBridgeState(newSettings.bridgeState);
     reduxSettings.updateDnsOptions(newSettings.tunnelOptions.dns);
+    reduxSettings.updateSplitTunneling(newSettings.splitTunnel);
 
     this.setRelaySettings(newSettings.relaySettings);
     this.setBridgeSettings(newSettings.bridgeSettings);
