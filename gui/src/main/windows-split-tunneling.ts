@@ -21,7 +21,20 @@ export async function getApplications(
   let shortcuts = resolveLinks(links.flat());
 
   if (applicationPaths) {
-    shortcuts = shortcuts.filter((shortcut) => applicationPaths.includes(shortcut.target));
+    const startMenuApplications = shortcuts.filter((shortcut) =>
+      applicationPaths.includes(shortcut.target),
+    );
+
+    const nonStartMenuApplications = applicationPaths
+      .filter(
+        (applicationPath) => !shortcuts.some((shortcut) => shortcut.target === applicationPath),
+      )
+      .map((applicationPath) => ({
+        target: applicationPath,
+        name: path.basename(applicationPath),
+      }));
+
+    shortcuts = [...startMenuApplications, ...nonStartMenuApplications];
   }
 
   return convertToSplitTunnelingApplications(shortcuts);

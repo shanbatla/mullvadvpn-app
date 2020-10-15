@@ -181,6 +181,12 @@ export default class AppRenderer {
       this.reduxActions.settings.setWireguardKeygenEvent(event);
     });
 
+    IpcRendererEventChannel.windowsSplitTunneling.listen(
+      (applications: ISplitTunnelingApplication[]) => {
+        this.reduxActions.settings.setSplitTunnelingApplications(applications);
+      },
+    );
+
     IpcRendererEventChannel.windowFocus.listen((focus: boolean) => {
       this.reduxActions.userInterface.setWindowFocused(focus);
     });
@@ -420,27 +426,27 @@ export default class AppRenderer {
   }
 
   public getLinuxSplitTunnelingApplications() {
-    return IpcRendererEventChannel.splitTunneling.getLinuxApplications();
+    return IpcRendererEventChannel.linuxSplitTunneling.getApplications();
   }
 
   public getWindowsSplitTunnelingApplications() {
-    return IpcRendererEventChannel.splitTunneling.getWindowsApplications();
+    return IpcRendererEventChannel.windowsSplitTunneling.getApplications();
   }
 
   public launchExcludedApplication(application: ILinuxSplitTunnelingApplication | string) {
-    consumePromise(IpcRendererEventChannel.splitTunneling.launchApplication(application));
+    consumePromise(IpcRendererEventChannel.linuxSplitTunneling.launchApplication(application));
   }
 
   public setSplitTunnelingState(enabled: boolean) {
-    consumePromise(IpcRendererEventChannel.splitTunneling.setState(enabled));
+    consumePromise(IpcRendererEventChannel.windowsSplitTunneling.setState(enabled));
   }
 
   public addSplitTunnelingApplication(application: ISplitTunnelingApplication | string) {
-    consumePromise(IpcRendererEventChannel.splitTunneling.addApplication(application));
+    consumePromise(IpcRendererEventChannel.windowsSplitTunneling.addApplication(application));
   }
 
   public removeSplitTunnelingApplication(application: ISplitTunnelingApplication | string) {
-    consumePromise(IpcRendererEventChannel.splitTunneling.removeApplication(application));
+    consumePromise(IpcRendererEventChannel.windowsSplitTunneling.removeApplication(application));
   }
 
   public getPreferredLocaleList(): IPreferredLocaleDescriptor[] {

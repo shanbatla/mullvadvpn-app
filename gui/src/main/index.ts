@@ -121,7 +121,8 @@ class ApplicationMain {
     autoConnect: false,
     blockWhenDisconnected: false,
     showBetaReleases: false,
-    enableExclusions: false,
+    splitTunnel: false,
+    splitTunnelAppsList: [],
     relaySettings: {
       normal: {
         location: 'any',
@@ -481,7 +482,7 @@ class ApplicationMain {
 
     // fetch settings
     try {
-      this.setSettings(await this.daemonRpc.getSettings());
+      await this.setSettings(await this.daemonRpc.getSettings());
     } catch (error) {
       log.error(`Failed to fetch settings: ${error.message}`);
 
@@ -599,7 +600,7 @@ class ApplicationMain {
         if ('tunnelState' in daemonEvent) {
           this.setTunnelState(daemonEvent.tunnelState);
         } else if ('settings' in daemonEvent) {
-          this.setSettings(daemonEvent.settings);
+          consumePromise(this.setSettings(daemonEvent.settings));
         } else if ('relayList' in daemonEvent) {
           this.setRelays(
             daemonEvent.relayList,
@@ -683,7 +684,7 @@ class ApplicationMain {
     }
   }
 
-  private setSettings(newSettings: ISettings) {
+  private async setSettings(newSettings: ISettings) {
     const oldSettings = this.settings;
     this.settings = newSettings;
 
@@ -703,6 +704,13 @@ class ApplicationMain {
 
     if (this.windowController) {
       IpcMainEventChannel.settings.notify(this.windowController.webContents, newSettings);
+
+      if (windowsSplitTunneling) {
+        IpcMainEventChannel.windowsSplitTunneling.notify(
+          this.windowController.webContents,
+          await windowsSplitTunneling.getApplications(newSettings.splitTunnelAppsList),
+        );
+      }
     }
 
     // since settings can have the relay constraints changed, the relay
@@ -1073,21 +1081,21 @@ class ApplicationMain {
     });
     IpcMainEventChannel.wireguardKeys.handleVerifyKey(() => this.daemonRpc.verifyWireguardKey());
 
-    IpcMainEventChannel.splitTunneling.handleGetLinuxApplications(() => {
+    IpcMainEventChannel.linuxSplitTunneling.handleGetApplications(() => {
       if (linuxSplitTunneling) {
         return linuxSplitTunneling.getApplications(this.locale);
       } else {
         throw Error('linuxSplitTunneling.getApplications function called without being imported');
       }
     });
-    IpcMainEventChannel.splitTunneling.handleGetWindowsApplications(() => {
+    IpcMainEventChannel.windowsSplitTunneling.handleGetApplications(() => {
       if (windowsSplitTunneling) {
         return windowsSplitTunneling.getApplications();
       } else {
         throw Error('windowsSplitTunneling.getApplications function called without being imported');
       }
     });
-    IpcMainEventChannel.splitTunneling.handleLaunchApplication((application) => {
+    IpcMainEventChannel.linuxSplitTunneling.handleLaunchApplication((application) => {
       if (linuxSplitTunneling) {
         linuxSplitTunneling.launchApplication(application);
         return Promise.resolve();
@@ -1096,14 +1104,14 @@ class ApplicationMain {
       }
     });
 
-    IpcMainEventChannel.splitTunneling.handleSetState((enabled) => {
+    IpcMainEventChannel.windowsSplitTunneling.handleSetState((enabled) => {
       if (windowsSplitTunneling) {
         return this.daemonRpc.setSplitTunnelingState(enabled);
       } else {
         throw Error('windowsSplitTunneling.setState function called without being imported');
       }
     });
-    IpcMainEventChannel.splitTunneling.handleAddApplication((application) => {
+    IpcMainEventChannel.windowsSplitTunneling.handleAddApplication((application) => {
       if (windowsSplitTunneling) {
         return this.daemonRpc.addSplitTunnelingApplication(
           typeof application === 'string' ? application : application.path,
@@ -1114,7 +1122,7 @@ class ApplicationMain {
         );
       }
     });
-    IpcMainEventChannel.splitTunneling.handleRemoveApplication((application) => {
+    IpcMainEventChannel.windowsSplitTunneling.handleRemoveApplication((application) => {
       if (windowsSplitTunneling) {
         return this.daemonRpc.removeSplitTunnelingApplication(
           typeof application === 'string' ? application : application.path,

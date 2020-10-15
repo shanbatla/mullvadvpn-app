@@ -471,16 +471,16 @@ export class DaemonRpc {
     return response.toObject();
   }
 
-  public async addSplitTunnelingApplication(_path: string): Promise<void> {
-    // TODO
+  public async addSplitTunnelingApplication(path: string): Promise<void> {
+    await this.callString(this.client.addSplitTunnelApp, path);
   }
 
-  public async removeSplitTunnelingApplication(_path: string): Promise<void> {
-    // TODO
+  public async removeSplitTunnelingApplication(path: string): Promise<void> {
+    await this.callString(this.client.removeSplitTunnelApp, path);
   }
 
-  public async setSplitTunnelingState(_enabled: boolean): Promise<void> {
-    // TODO
+  public async setSplitTunnelingState(enabled: boolean): Promise<void> {
+    await this.callBool(this.client.setSplitTunnelState, enabled);
   }
 
   private subscriptionId(): number {
