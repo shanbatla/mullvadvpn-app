@@ -11,6 +11,7 @@ const APPLICATION_PATHS = [
 interface ShortcutDetails {
   target: string;
   name: string;
+  args?: string;
 }
 
 // Finds applications by searching through the startmenu for shortcuts with and exe-file as target.
@@ -18,7 +19,7 @@ export async function getApplications(
   applicationPaths?: string[],
 ): Promise<ISplitTunnelingApplication[]> {
   const links = await Promise.all(APPLICATION_PATHS.map(findAllLinks));
-  let shortcuts = resolveLinks(links.flat());
+  let shortcuts = removeDuplicates(resolveLinks(links.flat()));
 
   if (applicationPaths) {
     const startMenuApplications = shortcuts.filter((shortcut) =>
@@ -70,10 +71,30 @@ function resolveLinks(linkPaths: string[]): ShortcutDetails[] {
     .filter(
       (shortcut): shortcut is ShortcutDetails =>
         shortcut !== null &&
+        shortcut.name !== 'Mullvad VPN' &&
         shortcut.target.endsWith('.exe') &&
         !shortcut.target.toLowerCase().includes('uninstall') &&
         !shortcut.name.toLowerCase().includes('uninstall'),
     );
+}
+
+function removeDuplicates(shortcuts: ShortcutDetails[]): ShortcutDetails[] {
+  const unique = shortcuts.reduce((shortcuts, shortcut) => {
+    if (shortcuts[shortcut.target]) {
+      if (
+        shortcuts[shortcut.target].args &&
+        shortcuts[shortcut.target].args !== '' &&
+        (!shortcut.args || shortcut.args === '')
+      ) {
+        shortcuts[shortcut.target] = shortcut;
+      }
+    } else {
+      shortcuts[shortcut.target] = shortcut;
+    }
+    return shortcuts;
+  }, {} as Record<string, ShortcutDetails>);
+
+  return Object.values(unique);
 }
 
 function convertToSplitTunnelingApplications(
