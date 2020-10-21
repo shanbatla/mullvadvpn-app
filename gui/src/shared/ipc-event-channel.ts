@@ -41,6 +41,7 @@ export interface IAppStateSnapshot {
   upgradeVersion: IAppVersionInfo;
   guiSettings: IGuiSettingsState;
   wireguardPublicKey?: IWireguardPublicKey;
+  windowsSplitTunnelingApplications?: ISplitTunnelingApplication[];
 }
 
 export interface IRelayListPair {

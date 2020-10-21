@@ -220,6 +220,12 @@ export default class AppRenderer {
       consumePromise(this.onDaemonConnected());
     }
 
+    if (initialState.windowsSplitTunnelingApplications) {
+      this.reduxActions.settings.setSplitTunnelingApplications(
+        initialState.windowsSplitTunnelingApplications,
+      );
+    }
+
     // disable pinch to zoom
     webFrame.setVisualZoomLevelLimits(1, 1);
   }
