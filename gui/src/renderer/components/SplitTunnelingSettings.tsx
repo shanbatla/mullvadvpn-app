@@ -1,5 +1,5 @@
 import { remote } from 'electron';
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useHistory } from 'react-router';
 import { sprintf } from 'sprintf-js';
@@ -248,6 +248,15 @@ export function WindowsSplitTunnelingSettings(props: IPlatformSplitTunnelingSett
   const [applications, setApplications] = useState<ISplitTunnelingApplication[]>();
   useEffect(() => consumePromise(getWindowsSplitTunnelingApplications().then(setApplications)), []);
 
+  const nonSplitApplications = useMemo(() => {
+    return applications?.filter(
+      (application) =>
+        !splitTunnelingApplications.some(
+          (splitTunnelingApplication) => application.path === splitTunnelingApplication.path,
+        ),
+    );
+  }, [applications, splitTunnelingApplications]);
+
   const addWithFilePicker = useFilePicker(
     messages.pgettext('split-tunneling-view', 'Add'),
     props.setBrowsing,
@@ -288,7 +297,7 @@ export function WindowsSplitTunnelingSettings(props: IPlatformSplitTunnelingSett
             {messages.pgettext('split-tunneling-view', 'Add applications')}
           </Cell.SectionTitle>
           <ApplicationList
-            applications={applications}
+            applications={nonSplitApplications}
             onSelect={addSplitTunnelingApplication}
             rowComponent={ApplicationRow}
           />
