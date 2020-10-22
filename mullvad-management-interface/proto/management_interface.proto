@@ -68,6 +68,7 @@ service ManagementService {
 	rpc GetSplitTunnelApps(google.protobuf.Empty) returns (stream google.protobuf.StringValue) {}
 	rpc AddSplitTunnelApp(google.protobuf.StringValue) returns (google.protobuf.Empty) {}
 	rpc RemoveSplitTunnelApp(google.protobuf.StringValue) returns (google.protobuf.Empty) {}
+	rpc ClearSplitTunnelApps(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 	rpc SetSplitTunnelState(google.protobuf.BoolValue) returns (google.protobuf.Empty) {}
 }
 

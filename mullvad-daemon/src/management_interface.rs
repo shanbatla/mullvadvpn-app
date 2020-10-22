@@ -777,6 +777,20 @@ impl ManagementService for ManagementServiceImpl {
     }
 
     #[cfg(windows)]
+    async fn clear_split_tunnel_apps(&self, _: Request<()>) -> ServiceResult<()> {
+        log::debug!("clear_split_tunnel_apps");
+        let (tx, rx) = oneshot::channel();
+        self.send_command_to_daemon(DaemonCommand::ClearSplitTunnelApps(tx))?;
+        rx.await
+            .map_err(|_| Status::internal("internal error"))
+            .map(Response::new)
+    }
+    #[cfg(not(windows))]
+    async fn clear_split_tunnel_apps(&self, _: Request<()>) -> ServiceResult<()> {
+        Ok(Response::new(()))
+    }
+
+    #[cfg(windows)]
     async fn set_split_tunnel_state(&self, request: Request<bool>) -> ServiceResult<()> {
         log::debug!("set_split_tunnel_state");
         let enabled = request.into_inner();

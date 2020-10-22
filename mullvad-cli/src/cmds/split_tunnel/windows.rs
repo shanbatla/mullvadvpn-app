@@ -52,6 +52,7 @@ fn create_app_subcommand() -> clap::App<'static, 'static> {
         .subcommand(
             clap::SubCommand::with_name("remove").arg(clap::Arg::with_name("path").required(true)),
         )
+        .subcommand(clap::SubCommand::with_name("clear"))
 }
 
 impl SplitTunnel {
@@ -82,6 +83,10 @@ impl SplitTunnel {
                     .await?
                     .remove_split_tunnel_app(path)
                     .await?;
+                Ok(())
+            }
+            ("clear", Some(_)) => {
+                new_rpc_client().await?.clear_split_tunnel_apps(()).await?;
                 Ok(())
             }
             _ => unreachable!("unhandled subcommand"),

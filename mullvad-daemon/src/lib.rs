@@ -237,6 +237,9 @@ pub enum DaemonCommand {
     /// Remove application from list of apps to exclude from the tunnel
     #[cfg(windows)]
     RemoveSplitTunnelApp(oneshot::Sender<()>, String),
+    /// Clear list of apps to exclude from the tunnel
+    #[cfg(windows)]
+    ClearSplitTunnelApps(oneshot::Sender<()>),
     /// Disable split tunnel
     #[cfg(windows)]
     SetSplitTunnelState(oneshot::Sender<()>, bool),
@@ -1106,6 +1109,8 @@ where
             #[cfg(windows)]
             RemoveSplitTunnelApp(tx, path) => self.on_remove_split_tunnel_app(tx, path).await,
             #[cfg(windows)]
+            ClearSplitTunnelApps(tx) => self.on_clear_split_tunnel_apps(tx).await,
+            #[cfg(windows)]
             SetSplitTunnelState(tx, enabled) => self.on_set_split_tunnel_state(tx, enabled).await,
             Shutdown => self.trigger_shutdown_event(),
             PrepareRestart => self.on_prepare_restart(),
@@ -1629,6 +1634,14 @@ where
         new_list.remove(&path);
 
         self.set_split_tunnel_paths(tx, "remove_split_tunnel_app response", settings, new_list)
+            .await;
+    }
+
+    #[cfg(windows)]
+    async fn on_clear_split_tunnel_apps(&mut self, tx: oneshot::Sender<()>) {
+        let settings = self.settings.to_settings();
+        let new_list = HashSet::new();
+        self.set_split_tunnel_paths(tx, "clear_split_tunnel_apps response", settings, new_list)
             .await;
     }
 
