@@ -22,6 +22,8 @@ use mullvad_types::{
     version, wireguard, ConnectionConfig,
 };
 use parking_lot::RwLock;
+#[cfg(windows)]
+use std::path::PathBuf;
 use std::{
     cmp,
     sync::{mpsc, Arc},
@@ -733,7 +735,9 @@ impl ManagementService for ManagementServiceImpl {
             let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
             tokio::spawn(async move {
                 for path in paths {
-                    let _ = tx.send(Ok(path));
+                    let _ = tx.send(path.into_os_string().into_string().map_err(|os_path| {
+                        Status::internal(format!("failed to convert OS string: {:?}", os_path))
+                    }));
                 }
             });
 
@@ -749,7 +753,7 @@ impl ManagementService for ManagementServiceImpl {
     #[cfg(windows)]
     async fn add_split_tunnel_app(&self, request: Request<String>) -> ServiceResult<()> {
         log::debug!("add_split_tunnel_app");
-        let path = request.into_inner();
+        let path = PathBuf::from(request.into_inner());
         let (tx, rx) = oneshot::channel();
         self.send_command_to_daemon(DaemonCommand::AddSplitTunnelApp(tx, path))?;
         rx.await
@@ -764,7 +768,7 @@ impl ManagementService for ManagementServiceImpl {
     #[cfg(windows)]
     async fn remove_split_tunnel_app(&self, request: Request<String>) -> ServiceResult<()> {
         log::debug!("remove_split_tunnel_app");
-        let path = request.into_inner();
+        let path = PathBuf::from(request.into_inner());
         let (tx, rx) = oneshot::channel();
         self.send_command_to_daemon(DaemonCommand::RemoveSplitTunnelApp(tx, path))?;
         rx.await
@@ -816,6 +820,20 @@ impl ManagementServiceImpl {
 }
 
 fn convert_settings(settings: &Settings) -> types::Settings {
+    #[cfg(windows)]
+    let split_tunnel_apps = {
+        let mut converted_list = vec![];
+        for path in settings.split_tunnel_apps.clone().iter() {
+            match path.as_path().as_os_str().to_str() {
+                Some(path) => converted_list.push(path.to_string()),
+                None => {
+                    log::error!("failed to convert OS string: {:?}", path);
+                }
+            }
+        }
+        converted_list
+    };
+
     types::Settings {
         account_token: settings.get_account_token().unwrap_or_default(),
         relay_settings: Some(convert_relay_settings(&settings.get_relay_settings())),
@@ -829,7 +847,7 @@ fn convert_settings(settings: &Settings) -> types::Settings {
         #[cfg(windows)]
         split_tunnel: settings.split_tunnel,
         #[cfg(windows)]
-        split_tunnel_apps: settings.split_tunnel_apps.clone().into_iter().collect(),
+        split_tunnel_apps,
         #[cfg(not(windows))]
         split_tunnel: false,
         #[cfg(not(windows))]

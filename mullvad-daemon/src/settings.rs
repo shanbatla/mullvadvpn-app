@@ -251,7 +251,7 @@ impl SettingsPersister {
     }
 
     #[cfg(windows)]
-    pub fn set_split_tunnel_apps(&mut self, paths: HashSet<String>) -> Result<bool, Error> {
+    pub fn set_split_tunnel_apps(&mut self, paths: HashSet<PathBuf>) -> Result<bool, Error> {
         let should_save = paths != self.settings.split_tunnel_apps;
         if should_save {
             self.settings.split_tunnel_apps = paths;

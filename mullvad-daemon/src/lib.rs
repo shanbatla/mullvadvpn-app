@@ -230,13 +230,13 @@ pub enum DaemonCommand {
     ClearSplitTunnelProcesses(oneshot::Sender<()>),
     /// Request list of apps to exclude from the tunnel
     #[cfg(windows)]
-    GetSplitTunnelApps(oneshot::Sender<HashSet<String>>),
+    GetSplitTunnelApps(oneshot::Sender<HashSet<PathBuf>>),
     /// Exclude traffic of an application from the tunnel
     #[cfg(windows)]
-    AddSplitTunnelApp(oneshot::Sender<()>, String),
+    AddSplitTunnelApp(oneshot::Sender<()>, PathBuf),
     /// Remove application from list of apps to exclude from the tunnel
     #[cfg(windows)]
-    RemoveSplitTunnelApp(oneshot::Sender<()>, String),
+    RemoveSplitTunnelApp(oneshot::Sender<()>, PathBuf),
     /// Clear list of apps to exclude from the tunnel
     #[cfg(windows)]
     ClearSplitTunnelApps(oneshot::Sender<()>),
@@ -1559,7 +1559,7 @@ where
     }
 
     #[cfg(windows)]
-    fn on_get_split_tunnel_apps(&mut self, tx: oneshot::Sender<HashSet<String>>) {
+    fn on_get_split_tunnel_apps(&mut self, tx: oneshot::Sender<HashSet<PathBuf>>) {
         Self::oneshot_send(
             tx,
             self.settings.to_settings().split_tunnel_apps,
@@ -1574,7 +1574,7 @@ where
         tx: oneshot::Sender<()>,
         success_msg: &'static str,
         settings: Settings,
-        new_list: HashSet<String>,
+        new_list: HashSet<PathBuf>,
     ) {
         if new_list == settings.split_tunnel_apps {
             Self::oneshot_send(tx, (), success_msg);
@@ -1616,7 +1616,7 @@ where
     }
 
     #[cfg(windows)]
-    async fn on_add_split_tunnel_app(&mut self, tx: oneshot::Sender<()>, path: String) {
+    async fn on_add_split_tunnel_app(&mut self, tx: oneshot::Sender<()>, path: PathBuf) {
         let settings = self.settings.to_settings();
 
         let mut new_list = settings.split_tunnel_apps.clone();
@@ -1627,7 +1627,7 @@ where
     }
 
     #[cfg(windows)]
-    async fn on_remove_split_tunnel_app(&mut self, tx: oneshot::Sender<()>, path: String) {
+    async fn on_remove_split_tunnel_app(&mut self, tx: oneshot::Sender<()>, path: PathBuf) {
         let settings = self.settings.to_settings();
 
         let mut new_list = settings.split_tunnel_apps.clone();
