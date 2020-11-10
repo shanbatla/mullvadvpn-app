@@ -33,7 +33,8 @@ export async function getApplications(
       .map((applicationPath) => ({
         target: applicationPath,
         name: path.basename(applicationPath),
-      }));
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     shortcuts = [...startMenuApplications, ...nonStartMenuApplications];
   }
