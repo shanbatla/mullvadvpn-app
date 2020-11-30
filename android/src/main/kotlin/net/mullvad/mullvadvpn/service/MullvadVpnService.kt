@@ -6,6 +6,8 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.Binder
 import android.os.IBinder
+import android.os.Looper
+import android.os.Messenger
 import android.util.Log
 import kotlin.properties.Delegates.observable
 import kotlinx.coroutines.CompletableDeferred
@@ -70,6 +72,7 @@ class MullvadVpnService : TalpidVpnService() {
 
     private lateinit var daemonInstance: DaemonInstance
     private lateinit var keyguardManager: KeyguardManager
+    private lateinit var messenger: Messenger
     private lateinit var notificationManager: ForegroundNotificationManager
     private lateinit var tunnelStateUpdater: TunnelStateUpdater
 
@@ -101,6 +104,8 @@ class MullvadVpnService : TalpidVpnService() {
         keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         notificationManager = ForegroundNotificationManager(this, serviceNotifier, keyguardManager)
         tunnelStateUpdater = TunnelStateUpdater(this, serviceNotifier)
+        
+        messenger = Messenger(ServiceHandler(Looper.getMainLooper()))
 
         notificationManager.acknowledgeStartForegroundService()
 
@@ -239,6 +244,7 @@ class MullvadVpnService : TalpidVpnService() {
 
         if (state == State.Running) {
             instance = ServiceInstance(
+                messenger,
                 daemon,
                 connectionProxy,
                 connectivityListener,
