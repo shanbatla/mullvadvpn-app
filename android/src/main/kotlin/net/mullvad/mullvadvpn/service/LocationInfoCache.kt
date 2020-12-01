@@ -35,7 +35,6 @@ class LocationInfoCache(
     private val fetchRequestChannel = runFetcher()
 
     private var lastKnownRealLocation: GeoIpLocation? = null
-    private var selectedRelayLocation: GeoIpLocation? = null
 
     var onNewLocation by observable<((GeoIpLocation?) -> Unit)?>(null) { _, _, callback ->
         callback?.invoke(location)
@@ -72,6 +71,8 @@ class LocationInfoCache(
             updateSelectedRelayLocation(newRelay)
         }
     }
+
+    var selectedRelayLocation: GeoIpLocation? = null
 
     init {
         connectivityListener.connectivityNotifier.subscribe(this) { isConnected ->
