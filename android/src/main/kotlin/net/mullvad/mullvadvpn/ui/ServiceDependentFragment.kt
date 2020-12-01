@@ -42,9 +42,6 @@ abstract class ServiceDependentFragment(val onNoService: OnNoService) : ServiceA
     lateinit var connectionProxy: ConnectionProxy
         private set
 
-    lateinit var connectivityListener: ConnectivityListener
-        private set
-
     lateinit var customDns: CustomDns
         private set
 
@@ -72,7 +69,6 @@ abstract class ServiceDependentFragment(val onNoService: OnNoService) : ServiceA
         accountCache = serviceConnection.accountCache
         appVersionInfoCache = serviceConnection.appVersionInfoCache
         connectionProxy = serviceConnection.connectionProxy
-        connectivityListener = serviceConnection.connectivityListener
         customDns = serviceConnection.customDns
         daemon = serviceConnection.daemon
         keyStatusListener = serviceConnection.keyStatusListener
