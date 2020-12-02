@@ -13,10 +13,6 @@ import kotlinx.coroutines.channels.sendBlocking
 import kotlinx.coroutines.withTimeout
 import net.mullvad.mullvadvpn.model.GeoIpLocation
 import net.mullvad.mullvadvpn.model.TunnelState
-import net.mullvad.mullvadvpn.relaylist.Relay
-import net.mullvad.mullvadvpn.relaylist.RelayCity
-import net.mullvad.mullvadvpn.relaylist.RelayCountry
-import net.mullvad.mullvadvpn.relaylist.RelayItem
 import net.mullvad.mullvadvpn.util.ExponentialBackoff
 import net.mullvad.talpid.ConnectivityListener
 import net.mullvad.talpid.tunnel.ActionAfterDisconnect
@@ -81,12 +77,6 @@ class LocationInfoCache(val connectivityListener: ConnectivityListener) {
         state = newState
     }
 
-    var selectedRelay by observable<RelayItem?>(null) { _, oldRelay, newRelay ->
-        if (newRelay != oldRelay) {
-            updateSelectedRelayLocation(newRelay)
-        }
-    }
-
     var selectedRelayLocation: GeoIpLocation? = null
 
     init {
@@ -101,27 +91,6 @@ class LocationInfoCache(val connectivityListener: ConnectivityListener) {
         connectivityListener.connectivityNotifier.unsubscribe(this)
         stateEvents = null
         fetchRequestChannel.close()
-    }
-
-    private fun updateSelectedRelayLocation(relayItem: RelayItem?) {
-        selectedRelayLocation = when (relayItem) {
-            is RelayCountry -> GeoIpLocation(null, null, relayItem.name, null, null)
-            is RelayCity -> GeoIpLocation(
-                null,
-                null,
-                relayItem.country.name,
-                relayItem.name,
-                null
-            )
-            is Relay -> GeoIpLocation(
-                null,
-                null,
-                relayItem.city.country.name,
-                relayItem.city.name,
-                relayItem.name
-            )
-            else -> null
-        }
     }
 
     private fun runFetcher() = GlobalScope.actor<RequestFetch>(
