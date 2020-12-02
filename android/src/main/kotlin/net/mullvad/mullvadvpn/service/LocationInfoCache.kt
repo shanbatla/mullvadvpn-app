@@ -1,6 +1,7 @@
 package net.mullvad.mullvadvpn.service
 
 import kotlin.properties.Delegates.observable
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.TimeoutCancellationException
@@ -21,7 +22,6 @@ import net.mullvad.talpid.ConnectivityListener
 import net.mullvad.talpid.tunnel.ActionAfterDisconnect
 
 class LocationInfoCache(
-    val daemon: MullvadDaemon,
     val connectionProxy: ConnectionProxy,
     val connectivityListener: ConnectivityListener
 ) {
@@ -34,7 +34,20 @@ class LocationInfoCache(
 
     private val fetchRequestChannel = runFetcher()
 
+    private var availableDaemon = CompletableDeferred<MullvadDaemon>()
     private var lastKnownRealLocation: GeoIpLocation? = null
+
+    var daemon by observable<MullvadDaemon?>(null) { _, oldDaemon, newDaemon ->
+        if (newDaemon != oldDaemon) {
+            if (oldDaemon != null) {
+                availableDaemon = CompletableDeferred()
+            }
+
+            if (newDaemon != null) {
+                availableDaemon.complete(newDaemon)
+            }
+        }
+    }
 
     var onNewLocation by observable<((GeoIpLocation?) -> Unit)?>(null) { _, _, callback ->
         callback?.invoke(location)
@@ -132,11 +145,11 @@ class LocationInfoCache(
 
         while (true) {
             var fetchType = channel.receive()
-            var newLocation = daemon.getCurrentLocation()
+            var newLocation = availableDaemon.await().getCurrentLocation()
 
             while (newLocation == null || !channel.isEmpty) {
                 fetchType = delayOrReceive(delays, channel, fetchType)
-                newLocation = daemon.getCurrentLocation()
+                newLocation = availableDaemon.await().getCurrentLocation()
             }
 
             handleNewLocation(newLocation, fetchType)
