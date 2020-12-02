@@ -106,7 +106,7 @@ class MullvadVpnService : TalpidVpnService() {
         notificationManager = ForegroundNotificationManager(this, serviceNotifier, keyguardManager)
         tunnelStateUpdater = TunnelStateUpdater(this, serviceNotifier)
         
-        messenger = Messenger(ServiceHandler(Looper.getMainLooper()))
+        messenger = Messenger(ServiceHandler(Looper.getMainLooper(), locationInfoCache))
 
         notificationManager.acknowledgeStartForegroundService()
 
