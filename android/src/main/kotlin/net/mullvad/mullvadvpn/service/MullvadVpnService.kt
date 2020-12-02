@@ -47,6 +47,7 @@ class MullvadVpnService : TalpidVpnService() {
     }
 
     private val binder = LocalBinder()
+    private val locationInfoCache = LocationInfoCache(connectivityListener)
     private val serviceNotifier = EventNotifier<ServiceInstance?>(null)
 
     private var state = State.Running
@@ -178,6 +179,7 @@ class MullvadVpnService : TalpidVpnService() {
         Log.d(TAG, "Service has stopped")
         state = State.Stopped
         notificationManager.onDestroy()
+        locationInfoCache.onDestroy()
         daemonInstance.onDestroy()
         instance = null
         super.onDestroy()
@@ -242,13 +244,16 @@ class MullvadVpnService : TalpidVpnService() {
 
         handlePendingAction(connectionProxy, settings)
 
+        locationInfoCache.daemon = daemon
+        locationInfoCache.stateEvents = connectionProxy.onStateChange
+
         if (state == State.Running) {
             instance = ServiceInstance(
                 messenger,
                 daemon,
                 connectionProxy,
-                connectivityListener,
                 customDns,
+                locationInfoCache,
                 settingsListener,
                 splitTunneling
             )
