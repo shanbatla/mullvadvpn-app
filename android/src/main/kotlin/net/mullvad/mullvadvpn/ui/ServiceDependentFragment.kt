@@ -11,10 +11,10 @@ import net.mullvad.mullvadvpn.service.AccountCache
 import net.mullvad.mullvadvpn.service.ConnectionProxy
 import net.mullvad.mullvadvpn.service.CustomDns
 import net.mullvad.mullvadvpn.service.KeyStatusListener
-import net.mullvad.mullvadvpn.service.LocationInfoCache
 import net.mullvad.mullvadvpn.service.MullvadDaemon
 import net.mullvad.mullvadvpn.service.SettingsListener
 import net.mullvad.mullvadvpn.service.SplitTunneling
+import net.mullvad.mullvadvpn.ui.serviceconnection.LocationInfoCache
 import net.mullvad.talpid.ConnectivityListener
 
 abstract class ServiceDependentFragment(val onNoService: OnNoService) : ServiceAwareFragment() {

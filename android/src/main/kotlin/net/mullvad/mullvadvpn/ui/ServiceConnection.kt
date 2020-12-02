@@ -3,6 +3,7 @@ package net.mullvad.mullvadvpn.ui
 import net.mullvad.mullvadvpn.dataproxy.AppVersionInfoCache
 import net.mullvad.mullvadvpn.dataproxy.RelayListListener
 import net.mullvad.mullvadvpn.service.ServiceInstance
+import net.mullvad.mullvadvpn.ui.serviceconnection.LocationInfoCache
 
 class ServiceConnection(private val service: ServiceInstance, val mainActivity: MainActivity) {
     val daemon = service.daemon
@@ -10,7 +11,7 @@ class ServiceConnection(private val service: ServiceInstance, val mainActivity: 
     val connectionProxy = service.connectionProxy
     val customDns = service.customDns
     val keyStatusListener = service.keyStatusListener
-    val locationInfoCache = service.locationInfoCache
+    val locationInfoCache = LocationInfoCache(service.messenger, service.locationInfoCache)
     val settingsListener = service.settingsListener
     val splitTunneling = service.splitTunneling
 
