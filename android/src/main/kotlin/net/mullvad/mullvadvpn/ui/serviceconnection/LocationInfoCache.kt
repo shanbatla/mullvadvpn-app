@@ -7,19 +7,27 @@ import net.mullvad.mullvadvpn.relaylist.Relay
 import net.mullvad.mullvadvpn.relaylist.RelayCity
 import net.mullvad.mullvadvpn.relaylist.RelayCountry
 import net.mullvad.mullvadvpn.relaylist.RelayItem
+import net.mullvad.mullvadvpn.service.Event
 import net.mullvad.mullvadvpn.service.Request
 
-class LocationInfoCache(
-    val connection: Messenger,
-    val serviceCache: net.mullvad.mullvadvpn.service.LocationInfoCache
-) {
-    var onNewLocation
-        get() = serviceCache.onNewLocation
-        set(value) { serviceCache.onNewLocation = value }
+class LocationInfoCache(val connection: Messenger, val eventDispatcher: EventDispatcher) {
+    private var location: GeoIpLocation? by observable(null) { _, _, newLocation ->
+        onNewLocation?.invoke(newLocation)
+    }
+
+    var onNewLocation by observable<((GeoIpLocation?) -> Unit)?>(null) { _, _, callback ->
+        callback?.invoke(location)
+    }
 
     var selectedRelay by observable<RelayItem?>(null) { _, oldRelay, newRelay ->
         if (newRelay != oldRelay) {
             updateSelectedRelayLocation(newRelay)
+        }
+    }
+
+    init {
+        eventDispatcher.registerHandler(Event.Type.NewLocation) { event: Event.NewLocation ->
+            location = event.location
         }
     }
 
