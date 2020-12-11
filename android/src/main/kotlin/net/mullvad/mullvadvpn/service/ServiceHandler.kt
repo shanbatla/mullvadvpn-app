@@ -38,6 +38,8 @@ class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) :
             is Request.SetSelectedRelay -> {
                 locationInfoCache.selectedRelayLocation = request.relayLocation
             }
+            is Request.WireGuardGenerateKey -> keyStatusListener.generateKey()
+            is Request.WireGuardVerifyKey -> keyStatusListener.verifyKey()
         }
     }
 
