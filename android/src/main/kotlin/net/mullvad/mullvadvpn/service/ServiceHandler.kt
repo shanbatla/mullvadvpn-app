@@ -10,6 +10,12 @@ import kotlin.properties.Delegates.observable
 class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) : Handler(looper) {
     private val listeners = mutableListOf<Messenger>()
 
+    val keyStatusListener = KeyStatusListener()
+
+    var daemon by observable<MullvadDaemon?>(null) { _, _, newDaemon ->
+        keyStatusListener.daemon = newDaemon
+    }
+
     var settingsListener by observable<SettingsListener?>(null) { _, oldListener, newListener ->
         oldListener?.unsubscribe(this@ServiceHandler)
 

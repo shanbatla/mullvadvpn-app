@@ -238,6 +238,7 @@ class MullvadVpnService : TalpidVpnService() {
         val customDns = CustomDns(daemon, settingsListener)
         val splitTunneling = splitTunneling.await()
 
+        handler.daemon = daemon
         handler.settingsListener = settingsListener
 
         splitTunneling.onChange = { excludedApps ->
@@ -257,6 +258,7 @@ class MullvadVpnService : TalpidVpnService() {
                 daemon,
                 connectionProxy,
                 customDns,
+                handler.keyStatusListener,
                 settingsListener,
                 splitTunneling
             )
