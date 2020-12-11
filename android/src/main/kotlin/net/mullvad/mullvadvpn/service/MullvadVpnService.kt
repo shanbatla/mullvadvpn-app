@@ -72,6 +72,7 @@ class MullvadVpnService : TalpidVpnService() {
     }
 
     private lateinit var daemonInstance: DaemonInstance
+    private lateinit var handler: ServiceHandler
     private lateinit var keyguardManager: KeyguardManager
     private lateinit var messenger: Messenger
     private lateinit var notificationManager: ForegroundNotificationManager
@@ -106,7 +107,8 @@ class MullvadVpnService : TalpidVpnService() {
         notificationManager = ForegroundNotificationManager(this, serviceNotifier, keyguardManager)
         tunnelStateUpdater = TunnelStateUpdater(this, serviceNotifier)
         
-        messenger = Messenger(ServiceHandler(Looper.getMainLooper(), locationInfoCache))
+        handler = ServiceHandler(Looper.getMainLooper(), locationInfoCache)
+        messenger = Messenger(handler)
 
         notificationManager.acknowledgeStartForegroundService()
 
@@ -235,6 +237,8 @@ class MullvadVpnService : TalpidVpnService() {
         val connectionProxy = ConnectionProxy(this, daemon)
         val customDns = CustomDns(daemon, settingsListener)
         val splitTunneling = splitTunneling.await()
+
+        handler.settingsListener = settingsListener
 
         splitTunneling.onChange = { excludedApps ->
             disallowedApps = excludedApps
