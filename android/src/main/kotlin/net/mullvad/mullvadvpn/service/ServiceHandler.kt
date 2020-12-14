@@ -19,10 +19,18 @@ class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) :
         val request = Request.fromMessage(message)
 
         when (request) {
-            is Request.RegisterListener -> listeners.add(request.listener)
+            is Request.RegisterListener -> registerListener(request.listener)
             is Request.SetSelectedRelay -> {
                 locationInfoCache.selectedRelayLocation = request.relayLocation
             }
+        }
+    }
+
+    private fun registerListener(listener: Messenger) {
+        listeners.add(listener)
+
+        listener.apply {
+            send(Event.NewLocation(locationInfoCache.location).message)
         }
     }
 
