@@ -53,6 +53,7 @@ class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) :
         listener.apply {
             send(Event.SettingsUpdate(settingsListener?.settings).message)
             send(Event.NewLocation(locationInfoCache.location).message)
+            send(Event.WireGuardKeyStatus(keyStatusListener.keyStatus).message)
         }
     }
 
