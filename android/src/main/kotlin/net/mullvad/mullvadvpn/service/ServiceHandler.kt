@@ -39,6 +39,7 @@ class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) :
         listeners.add(listener)
 
         listener.apply {
+            send(Event.SettingsUpdate(settingsListener?.settings).message)
             send(Event.NewLocation(locationInfoCache.location).message)
         }
     }
