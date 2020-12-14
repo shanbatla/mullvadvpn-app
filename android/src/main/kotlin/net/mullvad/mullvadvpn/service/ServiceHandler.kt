@@ -5,9 +5,18 @@ import android.os.Handler
 import android.os.Looper
 import android.os.Message
 import android.os.Messenger
+import kotlin.properties.Delegates.observable
 
 class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) : Handler(looper) {
     private val listeners = mutableListOf<Messenger>()
+
+    var settingsListener by observable<SettingsListener?>(null) { _, oldListener, newListener ->
+        oldListener?.unsubscribe(this@ServiceHandler)
+
+        newListener?.subscribe(this@ServiceHandler) { settings ->
+            sendEvent(Event.SettingsUpdate(settings))
+        }
+    }
 
     init {
         locationInfoCache.onNewLocation = { location ->
