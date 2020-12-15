@@ -10,7 +10,11 @@ import kotlin.properties.Delegates.observable
 class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) : Handler(looper) {
     private val listeners = mutableListOf<Messenger>()
 
-    val keyStatusListener = KeyStatusListener()
+    val keyStatusListener = KeyStatusListener().apply {
+        onKeyStatusChange.subscribe(this@ServiceHandler) { keyStatus ->
+            sendEvent(Event.WireGuardKeyStatus(keyStatus))
+        }
+    }
 
     var daemon by observable<MullvadDaemon?>(null) { _, _, newDaemon ->
         keyStatusListener.daemon = newDaemon
