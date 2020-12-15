@@ -21,7 +21,10 @@ import { ICurrentAppVersionInfo } from '../main';
 import { loadTranslations, messages, relayLocations } from '../shared/gettext';
 import { IGuiSettingsState, SYSTEM_PREFERRED_LOCALE_KEY } from '../shared/gui-settings-state';
 import { IpcRendererEventChannel, IRelayListPair } from '../shared/ipc-event-channel';
-import ISplitTunnelingApplication from '../shared/linux-split-tunneling-application';
+import {
+  ISplitTunnelingApplication,
+  ILinuxSplitTunnelingApplication,
+} from '../shared/split-tunneling-application';
 import { getRendererLogFile, setupLogging } from '../shared/logging';
 import consumePromise from '../shared/promise';
 import History from './lib/history';
@@ -178,6 +181,12 @@ export default class AppRenderer {
       this.reduxActions.settings.setWireguardKeygenEvent(event);
     });
 
+    IpcRendererEventChannel.windowsSplitTunneling.listen(
+      (applications: ISplitTunnelingApplication[]) => {
+        this.reduxActions.settings.setSplitTunnelingApplications(applications);
+      },
+    );
+
     IpcRendererEventChannel.windowFocus.listen((focus: boolean) => {
       this.reduxActions.userInterface.setWindowFocused(focus);
     });
@@ -209,6 +218,12 @@ export default class AppRenderer {
 
     if (initialState.isConnected) {
       consumePromise(this.onDaemonConnected());
+    }
+
+    if (initialState.windowsSplitTunnelingApplications) {
+      this.reduxActions.settings.setSplitTunnelingApplications(
+        initialState.windowsSplitTunnelingApplications,
+      );
     }
 
     // disable pinch to zoom
@@ -416,12 +431,28 @@ export default class AppRenderer {
     actions.settings.setWireguardKeygenEvent(keygenEvent);
   }
 
-  public getSplitTunnelingApplications() {
-    return IpcRendererEventChannel.splitTunneling.getApplications();
+  public getLinuxSplitTunnelingApplications() {
+    return IpcRendererEventChannel.linuxSplitTunneling.getApplications();
   }
 
-  public launchExcludedApplication(application: ISplitTunnelingApplication | string) {
-    consumePromise(IpcRendererEventChannel.splitTunneling.launchApplication(application));
+  public getWindowsSplitTunnelingApplications() {
+    return IpcRendererEventChannel.windowsSplitTunneling.getApplications();
+  }
+
+  public launchExcludedApplication(application: ILinuxSplitTunnelingApplication | string) {
+    consumePromise(IpcRendererEventChannel.linuxSplitTunneling.launchApplication(application));
+  }
+
+  public setSplitTunnelingState(enabled: boolean) {
+    consumePromise(IpcRendererEventChannel.windowsSplitTunneling.setState(enabled));
+  }
+
+  public addSplitTunnelingApplication(application: ISplitTunnelingApplication | string) {
+    consumePromise(IpcRendererEventChannel.windowsSplitTunneling.addApplication(application));
+  }
+
+  public removeSplitTunnelingApplication(application: ISplitTunnelingApplication | string) {
+    consumePromise(IpcRendererEventChannel.windowsSplitTunneling.removeApplication(application));
   }
 
   public getPreferredLocaleList(): IPreferredLocaleDescriptor[] {
@@ -621,6 +652,7 @@ export default class AppRenderer {
     reduxSettings.updateWireguardMtu(newSettings.tunnelOptions.wireguard.mtu);
     reduxSettings.updateBridgeState(newSettings.bridgeState);
     reduxSettings.updateDnsOptions(newSettings.tunnelOptions.dns);
+    reduxSettings.updateSplitTunneling(newSettings.splitTunnel);
 
     this.setRelaySettings(newSettings.relaySettings);
     this.setBridgeSettings(newSettings.bridgeSettings);

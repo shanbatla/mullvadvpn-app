@@ -6,7 +6,10 @@ import { IGuiSettingsState } from './gui-settings-state';
 
 import { ICurrentAppVersionInfo } from '../main/index';
 import { IWindowShapeParameters } from '../main/window-controller';
-import ISplitTunnelingApplication from '../shared/linux-split-tunneling-application';
+import {
+  ILinuxSplitTunnelingApplication,
+  ISplitTunnelingApplication,
+} from '../shared/split-tunneling-application';
 import {
   AccountToken,
   BridgeSettings,
@@ -38,6 +41,7 @@ export interface IAppStateSnapshot {
   upgradeVersion: IAppVersionInfo;
   guiSettings: IGuiSettingsState;
   wireguardPublicKey?: IWireguardPublicKey;
+  windowsSplitTunnelingApplications?: ISplitTunnelingApplication[];
 }
 
 export interface IRelayListPair {
@@ -157,14 +161,32 @@ interface IWireguardKeyHandlers extends ISender<IWireguardPublicKey | undefined>
   handleVerifyKey(fn: () => Promise<boolean>): void;
 }
 
-interface ISplitTunnelingMethods {
-  getApplications(): Promise<ISplitTunnelingApplication[]>;
-  launchApplication(application: ISplitTunnelingApplication | string): Promise<void>;
+interface ILinuxSplitTunnelingMethods {
+  getApplications(): Promise<ILinuxSplitTunnelingApplication[]>;
+  launchApplication(application: ILinuxSplitTunnelingApplication | string): Promise<void>;
 }
 
-interface ISplitTunnelingHandlers {
-  handleGetApplications(fn: () => Promise<ISplitTunnelingApplication[]>): void;
+interface IWindowsSplitTunnelingMethods extends IReceiver<ISplitTunnelingApplication[]> {
+  setState(enabled: boolean): Promise<void>;
+  getApplications(): Promise<ISplitTunnelingApplication[]>;
+  addApplication(application: ISplitTunnelingApplication | string): Promise<void>;
+  removeApplication(application: ISplitTunnelingApplication | string): Promise<void>;
+}
+
+interface ILinuxSplitTunnelingHandlers {
+  handleGetApplications(fn: () => Promise<ILinuxSplitTunnelingApplication[]>): void;
   handleLaunchApplication(
+    fn: (application: ILinuxSplitTunnelingApplication | string) => Promise<void>,
+  ): void;
+}
+
+interface IWindowsSplitTunnelingHandlers extends ISender<ISplitTunnelingApplication[]> {
+  handleSetState(fn: (enabled: boolean) => Promise<void>): void;
+  handleGetApplications(fn: () => Promise<ILinuxSplitTunnelingApplication[]>): void;
+  handleAddApplication(
+    fn: (application: ISplitTunnelingApplication | string) => Promise<void>,
+  ): void;
+  handleRemoveApplication(
     fn: (application: ISplitTunnelingApplication | string) => Promise<void>,
   ): void;
 }
@@ -228,8 +250,14 @@ const WIREGUARD_KEYGEN_EVENT = 'wireguard-keygen-event';
 const GENERATE_WIREGUARD_KEY = 'generate-wireguard-key';
 const VERIFY_WIREGUARD_KEY = 'verify-wireguard-key';
 
-const SPLIT_TUNNELING_GET_APPLICATIONS = 'split-tunneling-get-applications';
-const SPLIT_TUNNELING_LAUNCH_APPLICATION = 'split-tunneling-launch-application';
+const LINUX_SPLIT_TUNNELING_GET_APPLICATIONS = 'split-tunneling-get-linux-applications';
+const LINUX_SPLIT_TUNNELING_LAUNCH_APPLICATION = 'split-tunneling-launch-application';
+
+const WINDOWS_SPLIT_TUNNELING_SPLIT_APPLICATIONS = 'split-tunneling-split-applications';
+const WINDOWS_SPLIT_TUNNELING_SET_STATE = 'split-tunneling-set-state';
+const WINDOWS_SPLIT_TUNNELING_GET_APPLICATIONS = 'split-tunneling-get-windows-applications';
+const WINDOWS_SPLIT_TUNNELING_ADD_APPLICATION = 'split-tunneling-add-application';
+const WINDOWS_SPLIT_TUNNELING_REMOVE_APPLICATION = 'split-tunneling-remove-application';
 
 /// Typed IPC event channel
 ///
@@ -337,9 +365,17 @@ export class IpcRendererEventChannel {
     verifyKey: requestSender(VERIFY_WIREGUARD_KEY),
   };
 
-  public static splitTunneling: ISplitTunnelingMethods = {
-    getApplications: requestSender(SPLIT_TUNNELING_GET_APPLICATIONS),
-    launchApplication: requestSender(SPLIT_TUNNELING_LAUNCH_APPLICATION),
+  public static linuxSplitTunneling: ILinuxSplitTunnelingMethods = {
+    getApplications: requestSender(LINUX_SPLIT_TUNNELING_GET_APPLICATIONS),
+    launchApplication: requestSender(LINUX_SPLIT_TUNNELING_LAUNCH_APPLICATION),
+  };
+
+  public static windowsSplitTunneling: IWindowsSplitTunnelingMethods = {
+    listen: listen(WINDOWS_SPLIT_TUNNELING_SPLIT_APPLICATIONS),
+    setState: requestSender(WINDOWS_SPLIT_TUNNELING_SET_STATE),
+    getApplications: requestSender(WINDOWS_SPLIT_TUNNELING_GET_APPLICATIONS),
+    addApplication: requestSender(WINDOWS_SPLIT_TUNNELING_ADD_APPLICATION),
+    removeApplication: requestSender(WINDOWS_SPLIT_TUNNELING_REMOVE_APPLICATION),
   };
 }
 
@@ -445,9 +481,17 @@ export class IpcMainEventChannel {
     handleVerifyKey: requestHandler(VERIFY_WIREGUARD_KEY),
   };
 
-  public static splitTunneling: ISplitTunnelingHandlers = {
-    handleGetApplications: requestHandler(SPLIT_TUNNELING_GET_APPLICATIONS),
-    handleLaunchApplication: requestHandler(SPLIT_TUNNELING_LAUNCH_APPLICATION),
+  public static linuxSplitTunneling: ILinuxSplitTunnelingHandlers = {
+    handleGetApplications: requestHandler(LINUX_SPLIT_TUNNELING_GET_APPLICATIONS),
+    handleLaunchApplication: requestHandler(LINUX_SPLIT_TUNNELING_LAUNCH_APPLICATION),
+  };
+
+  public static windowsSplitTunneling: IWindowsSplitTunnelingHandlers = {
+    notify: sender<ISplitTunnelingApplication[]>(WINDOWS_SPLIT_TUNNELING_SPLIT_APPLICATIONS),
+    handleSetState: requestHandler(WINDOWS_SPLIT_TUNNELING_SET_STATE),
+    handleGetApplications: requestHandler(WINDOWS_SPLIT_TUNNELING_GET_APPLICATIONS),
+    handleAddApplication: requestHandler(WINDOWS_SPLIT_TUNNELING_ADD_APPLICATION),
+    handleRemoveApplication: requestHandler(WINDOWS_SPLIT_TUNNELING_REMOVE_APPLICATION),
   };
 }
 
