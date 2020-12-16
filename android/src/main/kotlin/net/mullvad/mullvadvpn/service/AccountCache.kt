@@ -6,10 +6,11 @@ import net.mullvad.mullvadvpn.util.ExponentialBackoff
 import net.mullvad.mullvadvpn.util.Intermittent
 import net.mullvad.mullvadvpn.util.JobTracker
 import net.mullvad.talpid.util.EventNotifier
+import net.mullvad.talpid.util.autoSubscribable
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 
-class AccountCache(val settingsListener: SettingsListener) {
+class AccountCache {
     companion object {
         public val EXPIRY_FORMAT = DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss z")
 
@@ -40,10 +41,8 @@ class AccountCache(val settingsListener: SettingsListener) {
 
     var daemon by availableDaemon.source()
 
-    init {
-        settingsListener.accountNumberNotifier.subscribe(this) { accountNumber ->
-            handleNewAccountNumber(accountNumber)
-        }
+    var accountListener by autoSubscribable<String?>(this, null) { accountNumber ->
+        handleNewAccountNumber(accountNumber)
     }
 
     suspend fun createNewAccount(): String? {
@@ -106,7 +105,7 @@ class AccountCache(val settingsListener: SettingsListener) {
     }
 
     fun onDestroy() {
-        settingsListener.accountNumberNotifier.unsubscribe(this)
+        accountListener = null
         jobTracker.cancelAllJobs()
     }
 
