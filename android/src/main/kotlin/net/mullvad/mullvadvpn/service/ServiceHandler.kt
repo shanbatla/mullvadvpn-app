@@ -10,6 +10,8 @@ import kotlin.properties.Delegates.observable
 class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) : Handler(looper) {
     private val listeners = mutableListOf<Messenger>()
 
+    val accountCache = AccountCache()
+
     val keyStatusListener = KeyStatusListener().apply {
         onKeyStatusChange.subscribe(this@ServiceHandler) { keyStatus ->
             sendEvent(Event.WireGuardKeyStatus(keyStatus))
@@ -17,6 +19,7 @@ class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) :
     }
 
     var daemon by observable<MullvadDaemon?>(null) { _, _, newDaemon ->
+        accountCache.daemon = newDaemon
         keyStatusListener.daemon = newDaemon
     }
 
@@ -29,6 +32,8 @@ class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) :
         newListener?.subscribe(this@ServiceHandler) { settings ->
             sendEvent(Event.SettingsUpdate(settings))
         }
+
+        accountCache.accountListener = newListener?.accountNumberNotifier
     }
 
     init {
