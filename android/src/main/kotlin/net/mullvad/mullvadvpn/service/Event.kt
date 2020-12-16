@@ -5,6 +5,7 @@ import android.os.Message
 import net.mullvad.mullvadvpn.model.GeoIpLocation
 import net.mullvad.mullvadvpn.model.KeygenEvent
 import net.mullvad.mullvadvpn.model.Settings
+import org.joda.time.DateTime
 
 sealed class Event {
     abstract val type: Type
@@ -18,6 +19,30 @@ sealed class Event {
         }
 
     open fun prepareData(data: Bundle) {}
+
+    class AccountExpiry(val expiry: DateTime?) : Event() {
+        companion object {
+            private val expiryKey = "expiry"
+
+            fun buildExpiry(data: Bundle): DateTime? {
+                val expiryInMilliseconds = data.getLong(expiryKey)
+
+                if (expiryInMilliseconds == 0L) {
+                    return null
+                } else {
+                    return DateTime(expiryInMilliseconds)
+                }
+            }
+        }
+
+        override val type = Type.AccountExpiry
+
+        constructor(data: Bundle) : this(DateTime(data.getLong(expiryKey))) {}
+
+        override fun prepareData(data: Bundle) {
+            data.putLong(expiryKey, expiry?.millis ?: 0L)
+        }
+    }
 
     class AccountNumber(val account: String?) : Event() {
         companion object {
@@ -76,6 +101,7 @@ sealed class Event {
     }
 
     enum class Type(val build: (Bundle) -> Event) {
+        AccountExpiry({ data -> AccountExpiry(data) }),
         AccountNumber({ data -> AccountNumber(data) }),
         NewLocation({ data -> NewLocation(data) }),
         SettingsUpdate({ data -> SettingsUpdate(data) }),
