@@ -11,7 +11,11 @@ import kotlinx.coroutines.runBlocking
 class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) : Handler(looper) {
     private val listeners = mutableListOf<Messenger>()
 
-    val accountCache = AccountCache()
+    val accountCache = AccountCache().apply {
+        onAccountNumberChange.subscribe(this@ServiceHandler) { account ->
+            sendEvent(Event.AccountNumber(account))
+        }
+    }
 
     val keyStatusListener = KeyStatusListener().apply {
         onKeyStatusChange.subscribe(this@ServiceHandler) { keyStatus ->
