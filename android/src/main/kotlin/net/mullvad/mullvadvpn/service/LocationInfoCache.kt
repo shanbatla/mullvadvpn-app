@@ -14,6 +14,7 @@ import kotlinx.coroutines.withTimeout
 import net.mullvad.mullvadvpn.model.GeoIpLocation
 import net.mullvad.mullvadvpn.model.TunnelState
 import net.mullvad.mullvadvpn.util.ExponentialBackoff
+import net.mullvad.mullvadvpn.util.Intermittent
 import net.mullvad.talpid.ConnectivityListener
 import net.mullvad.talpid.tunnel.ActionAfterDisconnect
 import net.mullvad.talpid.util.autoSubscribable
@@ -28,20 +29,10 @@ class LocationInfoCache(val connectivityListener: ConnectivityListener) {
 
     private val fetchRequestChannel = runFetcher()
 
-    private var availableDaemon = CompletableDeferred<MullvadDaemon>()
+    private var availableDaemon = Intermittent<MullvadDaemon>()
     private var lastKnownRealLocation: GeoIpLocation? = null
 
-    var daemon by observable<MullvadDaemon?>(null) { _, oldDaemon, newDaemon ->
-        if (newDaemon != oldDaemon) {
-            if (oldDaemon != null) {
-                availableDaemon = CompletableDeferred()
-            }
-
-            if (newDaemon != null) {
-                availableDaemon.complete(newDaemon)
-            }
-        }
-    }
+    var daemon by availableDaemon.source()
 
     var onNewLocation by observable<((GeoIpLocation?) -> Unit)?>(null) { _, _, callback ->
         callback?.invoke(location)
