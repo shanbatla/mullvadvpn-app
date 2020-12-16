@@ -19,6 +19,10 @@ class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) :
         onAccountExpiryChange.subscribe(this@ServiceHandler) { expiry ->
             sendEvent(Event.AccountExpiry(expiry))
         }
+
+        onAccountHistoryChange.subscribe(this@ServiceHandler) { history ->
+            sendEvent(Event.AccountHistory(history))
+        }
     }
 
     val keyStatusListener = KeyStatusListener().apply {
