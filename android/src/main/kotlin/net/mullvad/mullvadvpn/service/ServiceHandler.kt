@@ -6,6 +6,7 @@ import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import kotlin.properties.Delegates.observable
+import kotlinx.coroutines.runBlocking
 
 class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) : Handler(looper) {
     private val listeners = mutableListOf<Messenger>()
@@ -46,7 +47,22 @@ class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) :
         val request = Request.fromMessage(message)
 
         when (request) {
+            is Request.CreateAccount -> runBlocking { accountCache.createNewAccount() }
+            is Request.FetchAccountExpiry -> accountCache.fetchAccountExpiry()
+            is Request.InvalidateAccountExpiry -> {
+                accountCache.invalidateAccountExpiry(request.expiry)
+            }
+            is Request.Login -> {
+                request.account?.let { account ->
+                    runBlocking { accountCache.login(account) }
+                }
+            }
             is Request.RegisterListener -> registerListener(request.listener)
+            is Request.RemoveAccountFromHistory -> {
+                request.account?.let { account ->
+                    accountCache.removeAccountFromHistory(account)
+                }
+            }
             is Request.SetSelectedRelay -> {
                 locationInfoCache.selectedRelayLocation = request.relayLocation
             }
