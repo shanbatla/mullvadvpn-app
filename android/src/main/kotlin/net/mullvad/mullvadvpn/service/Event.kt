@@ -19,6 +19,20 @@ sealed class Event {
 
     open fun prepareData(data: Bundle) {}
 
+    class AccountNumber(val account: String?) : Event() {
+        companion object {
+            private val accountKey = "account"
+        }
+
+        override val type = Type.AccountNumber
+
+        constructor(data: Bundle) : this(data.getString(accountKey)) {}
+
+        override fun prepareData(data: Bundle) {
+            data.putString(accountKey, account)
+        }
+    }
+
     class NewLocation(val location: GeoIpLocation?) : Event() {
         companion object {
             private val locationKey = "location"
@@ -62,6 +76,7 @@ sealed class Event {
     }
 
     enum class Type(val build: (Bundle) -> Event) {
+        AccountNumber({ data -> AccountNumber(data) }),
         NewLocation({ data -> NewLocation(data) }),
         SettingsUpdate({ data -> SettingsUpdate(data) }),
         WireGuardKeyStatus({ data -> WireGuardKeyStatus(data) }),
