@@ -21,7 +21,10 @@ class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) :
     }
 
     var settingsListener by observable<SettingsListener?>(null) { _, oldListener, newListener ->
-        oldListener?.unsubscribe(this@ServiceHandler)
+        oldListener?.apply {
+            unsubscribe(this@ServiceHandler)
+            onDestroy()
+        }
 
         newListener?.subscribe(this@ServiceHandler) { settings ->
             sendEvent(Event.SettingsUpdate(settings))

@@ -19,6 +19,5 @@ class ServiceInstance(
         accountCache.onDestroy()
         connectionProxy.onDestroy()
         customDns.onDestroy()
-        settingsListener.onDestroy()
     }
 }
