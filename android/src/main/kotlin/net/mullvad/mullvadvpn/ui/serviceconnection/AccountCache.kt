@@ -15,6 +15,9 @@ class AccountCache(val connection: Messenger, val eventDispatcher: EventDispatch
     private var accountExpiry by onAccountExpiryChange.notifiable()
     private var accountHistory by onAccountHistoryChange.notifiable()
 
+    var newlyCreatedAccount = false
+        private set
+
     init {
         eventDispatcher.apply {
             registerHandler(Event.Type.AccountNumber) { event: Event.AccountNumber ->
@@ -27,6 +30,10 @@ class AccountCache(val connection: Messenger, val eventDispatcher: EventDispatch
 
             registerHandler(Event.Type.AccountHistory) { event: Event.AccountHistory ->
                 accountHistory = event.history ?: ArrayList()
+            }
+
+            registerHandler(Event.Type.NewAccountStatus) { event: Event.NewAccountStatus ->
+                newlyCreatedAccount = event.isNew
             }
         }
     }
