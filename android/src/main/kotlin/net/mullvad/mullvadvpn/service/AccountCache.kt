@@ -1,5 +1,6 @@
 package net.mullvad.mullvadvpn.service
 
+import kotlin.properties.Delegates.observable
 import kotlinx.coroutines.delay
 import net.mullvad.mullvadvpn.model.GetAccountDataResult
 import net.mullvad.mullvadvpn.util.ExponentialBackoff
@@ -26,8 +27,16 @@ class AccountCache {
     val onAccountExpiryChange = EventNotifier<DateTime?>(null)
     val onAccountHistoryChange = EventNotifier<ArrayList<String>>(ArrayList())
 
-    var newlyCreatedAccount = false
+    var newlyCreatedAccount: Boolean by observable(false) { _, wasNew, isNew ->
+        if (isNew != wasNew) {
+            onNewAccountStatusChange?.invoke(isNew)
+        }
+    }
         private set
+
+    var onNewAccountStatusChange by observable<((Boolean) -> Unit)?>(null) { _, _, callback ->
+        callback?.invoke(newlyCreatedAccount)
+    }
 
     private val availableDaemon = Intermittent<MullvadDaemon>()
     private val jobTracker = JobTracker()
