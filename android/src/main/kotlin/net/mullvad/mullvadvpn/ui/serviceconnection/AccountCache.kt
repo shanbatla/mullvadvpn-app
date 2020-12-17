@@ -1,6 +1,7 @@
 package net.mullvad.mullvadvpn.ui.serviceconnection
 
 import android.os.Messenger
+import kotlinx.coroutines.CompletableDeferred
 import net.mullvad.mullvadvpn.service.Event
 import net.mullvad.mullvadvpn.service.Request
 import net.mullvad.talpid.util.EventNotifier
@@ -15,6 +16,8 @@ class AccountCache(val connection: Messenger, val eventDispatcher: EventDispatch
     private var accountExpiry by onAccountExpiryChange.notifiable()
     private var accountHistory by onAccountHistoryChange.notifiable()
 
+    private var createdAccountNumber: CompletableDeferred<String?>? = null
+
     var newlyCreatedAccount = false
         private set
 
@@ -22,6 +25,7 @@ class AccountCache(val connection: Messenger, val eventDispatcher: EventDispatch
         eventDispatcher.apply {
             registerHandler(Event.Type.AccountNumber) { event: Event.AccountNumber ->
                 accountNumber = event.account
+                createdAccountNumber?.complete(event.account)
             }
 
             registerHandler(Event.Type.AccountExpiry) { event: Event.AccountExpiry ->
@@ -38,8 +42,15 @@ class AccountCache(val connection: Messenger, val eventDispatcher: EventDispatch
         }
     }
 
-    fun createNewAccount() {
+    suspend fun createNewAccount(): String? {
+        createdAccountNumber = CompletableDeferred()
         connection.send(Request.CreateAccount().message)
+
+        val account = createdAccountNumber?.await()
+
+        createdAccountNumber = null
+
+        return account
     }
 
     fun login(account: String) {
