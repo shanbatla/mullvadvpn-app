@@ -79,6 +79,20 @@ sealed class Event {
         }
     }
 
+    class NewAccountStatus(val isNew: Boolean) : Event() {
+        companion object {
+            private val isNewKey = "isNew"
+        }
+
+        override val type = Type.NewAccountStatus
+
+        constructor(data: Bundle) : this(data.getBoolean(isNewKey)) {}
+
+        override fun prepareData(data: Bundle) {
+            data.putBoolean(isNewKey, isNew)
+        }
+    }
+
     class NewLocation(val location: GeoIpLocation?) : Event() {
         companion object {
             private val locationKey = "location"
@@ -125,6 +139,7 @@ sealed class Event {
         AccountExpiry({ data -> AccountExpiry(data) }),
         AccountHistory({ data -> AccountHistory(data) }),
         AccountNumber({ data -> AccountNumber(data) }),
+        NewAccountStatus({ data -> NewAccountStatus(data) }),
         NewLocation({ data -> NewLocation(data) }),
         SettingsUpdate({ data -> SettingsUpdate(data) }),
         WireGuardKeyStatus({ data -> WireGuardKeyStatus(data) }),
