@@ -59,7 +59,7 @@ class MullvadVpnService : TalpidVpnService() {
             oldInstance?.onDestroy()
 
             accountExpiryNotification = newInstance?.let { instance ->
-                AccountExpiryNotification(this, instance.daemon, instance.accountCache)
+                AccountExpiryNotification(this, instance.daemon, handler.accountCache)
             }
 
             serviceNotifier.notify(newInstance)
@@ -258,7 +258,6 @@ class MullvadVpnService : TalpidVpnService() {
             instance = ServiceInstance(
                 messenger,
                 daemon,
-                handler.accountCache,
                 connectionProxy,
                 customDns,
                 splitTunneling
