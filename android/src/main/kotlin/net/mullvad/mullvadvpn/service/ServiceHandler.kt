@@ -23,6 +23,10 @@ class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) :
         onAccountHistoryChange.subscribe(this@ServiceHandler) { history ->
             sendEvent(Event.AccountHistory(history))
         }
+
+        onNewAccountStatusChange = { isNew ->
+            sendEvent(Event.NewAccountStatus(isNew))
+        }
     }
 
     val keyStatusListener = KeyStatusListener().apply {
