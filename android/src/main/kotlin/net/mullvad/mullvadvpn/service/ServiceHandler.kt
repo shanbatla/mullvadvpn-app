@@ -61,6 +61,10 @@ class ServiceHandler(
         locationInfoCache.onNewLocation = { location ->
             sendEvent(Event.NewLocation(location))
         }
+
+        splitTunneling.onChange.subscribe(this) { excludedApps ->
+            sendEvent(Event.SplitTunnelingUpdate(excludedApps))
+        }
     }
 
     override fun handleMessage(message: Message) {
