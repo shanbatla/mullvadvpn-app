@@ -8,7 +8,11 @@ import android.os.Messenger
 import kotlin.properties.Delegates.observable
 import kotlinx.coroutines.runBlocking
 
-class ServiceHandler(looper: Looper, val locationInfoCache: LocationInfoCache) : Handler(looper) {
+class ServiceHandler(
+    looper: Looper,
+    val locationInfoCache: LocationInfoCache,
+    val splitTunneling: SplitTunneling
+) : Handler(looper) {
     private val listeners = mutableListOf<Messenger>()
 
     val accountCache = AccountCache().apply {

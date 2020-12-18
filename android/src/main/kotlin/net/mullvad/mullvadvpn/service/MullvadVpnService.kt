@@ -197,17 +197,17 @@ class MullvadVpnService : TalpidVpnService() {
     }
 
     private fun initializeSplitTunneling() = GlobalScope.launch(Dispatchers.Default) {
-        handler = ServiceHandler(Looper.getMainLooper(), locationInfoCache)
+        val splitTunnelingInstance = SplitTunneling(this@MullvadVpnService).apply {
+            onChange = { excludedApps ->
+                disallowedApps = excludedApps
+                markTunAsStale()
+            }
+        }
+
+        handler = ServiceHandler(Looper.getMainLooper(), locationInfoCache, splitTunnelingInstance)
         messenger = Messenger(handler)
 
-        splitTunneling.complete(
-            SplitTunneling(this@MullvadVpnService).apply {
-                onChange = { excludedApps ->
-                    disallowedApps = excludedApps
-                    markTunAsStale()
-                }
-            }
-        )
+        splitTunneling.complete(splitTunnelingInstance)
     }
 
     private fun handleDaemonInstance(daemon: MullvadDaemon?) {
