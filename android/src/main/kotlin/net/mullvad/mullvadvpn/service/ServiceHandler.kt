@@ -68,7 +68,17 @@ class ServiceHandler(
 
         when (request) {
             is Request.CreateAccount -> runBlocking { accountCache.createNewAccount() }
+            is Request.ExcludeApp -> {
+                request.packageName?.let { packageName ->
+                    splitTunneling.excludeApp(packageName)
+                }
+            }
             is Request.FetchAccountExpiry -> accountCache.fetchAccountExpiry()
+            is Request.IncludeApp -> {
+                request.packageName?.let { packageName ->
+                    splitTunneling.includeApp(packageName)
+                }
+            }
             is Request.InvalidateAccountExpiry -> {
                 accountCache.invalidateAccountExpiry(request.expiry)
             }
@@ -77,12 +87,14 @@ class ServiceHandler(
                     runBlocking { accountCache.login(account) }
                 }
             }
+            is Request.PersistExcludedApps -> splitTunneling.persist()
             is Request.RegisterListener -> registerListener(request.listener)
             is Request.RemoveAccountFromHistory -> {
                 request.account?.let { account ->
                     accountCache.removeAccountFromHistory(account)
                 }
             }
+            is Request.SetEnableSplitTunneling -> splitTunneling.enabled = request.enable
             is Request.SetSelectedRelay -> {
                 locationInfoCache.selectedRelayLocation = request.relayLocation
             }
