@@ -121,6 +121,26 @@ sealed class Event {
         }
     }
 
+    class SplitTunnelingUpdate(val excludedApps: ArrayList<String>?) : Event() {
+        companion object {
+            private val excludedAppsKey = "excludedApps"
+
+            fun buildExcludedApps(data: Bundle): ArrayList<String>? {
+                return data.getStringArray(excludedAppsKey)?.let { excludedAppsArray ->
+                    ArrayList(excludedAppsArray.toList())
+                }
+            }
+        }
+
+        override val type = Type.SplitTunnelingUpdate
+
+        constructor(data: Bundle) : this(buildExcludedApps(data)) {}
+
+        override fun prepareData(data: Bundle) {
+            data.putStringArray(excludedAppsKey, excludedApps?.toTypedArray())
+        }
+    }
+
     class WireGuardKeyStatus(val keyStatus: KeygenEvent?) : Event() {
         companion object {
             private val keyStatusKey = "keyStatus"
@@ -142,6 +162,7 @@ sealed class Event {
         NewAccountStatus({ data -> NewAccountStatus(data) }),
         NewLocation({ data -> NewLocation(data) }),
         SettingsUpdate({ data -> SettingsUpdate(data) }),
+        SplitTunnelingUpdate({ data -> SplitTunnelingUpdate(data) }),
         WireGuardKeyStatus({ data -> WireGuardKeyStatus(data) }),
     }
 
