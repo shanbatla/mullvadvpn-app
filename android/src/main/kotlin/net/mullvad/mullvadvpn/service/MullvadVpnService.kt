@@ -80,10 +80,13 @@ class MullvadVpnService : TalpidVpnService() {
 
     private var pendingAction by observable<PendingAction?>(null) { _, _, _ ->
         val connectionProxy = instance?.connectionProxy
-        val settings = handler.settingsListener?.settings
 
-        if (connectionProxy != null && settings != null) {
-            handlePendingAction(connectionProxy, settings)
+        // The service instance awaits the split tunneling initialization, which also starts the
+        // handler. So if the instance is not null, the handler has certainly been initialized.
+        if (connectionProxy != null) {
+            handler.settingsListener?.settings?.let { settings ->
+                handlePendingAction(connectionProxy, settings)
+            }
         }
     }
 
@@ -106,9 +109,6 @@ class MullvadVpnService : TalpidVpnService() {
         keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         notificationManager = ForegroundNotificationManager(this, serviceNotifier, keyguardManager)
         tunnelStateUpdater = TunnelStateUpdater(this, serviceNotifier)
-        
-        handler = ServiceHandler(Looper.getMainLooper(), locationInfoCache)
-        messenger = Messenger(handler)
 
         notificationManager.acknowledgeStartForegroundService()
 
@@ -197,6 +197,9 @@ class MullvadVpnService : TalpidVpnService() {
     }
 
     private fun initializeSplitTunneling() = GlobalScope.launch(Dispatchers.Default) {
+        handler = ServiceHandler(Looper.getMainLooper(), locationInfoCache)
+        messenger = Messenger(handler)
+
         splitTunneling.complete(
             SplitTunneling(this@MullvadVpnService).apply {
                 onChange = { excludedApps ->
