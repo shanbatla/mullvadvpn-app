@@ -198,7 +198,7 @@ class MullvadVpnService : TalpidVpnService() {
 
     private fun initializeSplitTunneling() = GlobalScope.launch(Dispatchers.Default) {
         val splitTunnelingInstance = SplitTunneling(this@MullvadVpnService).apply {
-            onChange = { excludedApps ->
+            onChange.subscribe(this@MullvadVpnService) { excludedApps ->
                 disallowedApps = excludedApps
                 markTunAsStale()
             }
@@ -246,7 +246,7 @@ class MullvadVpnService : TalpidVpnService() {
 
         notificationManager.accountNumberEvents = settingsListener.accountNumberNotifier
 
-        splitTunneling.onChange = { excludedApps ->
+        splitTunneling.onChange.subscribe(this@MullvadVpnService) { excludedApps ->
             disallowedApps = excludedApps
             markTunAsStale()
             connectionProxy.reconnect()
